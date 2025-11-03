@@ -289,7 +289,7 @@ JAX-HDC is inspired by the excellent [TorchHD](https://github.com/hyperdimension
 
 ## Development Roadmap
 
-### Phase 1: MVP ✅ **100% Complete**
+### Phase 1: MVP - 100% Complete
 
 - [x] Core functional operations (bind, bundle, permute, similarity)
 - [x] BSC and MAP VSA models
@@ -301,7 +301,7 @@ JAX-HDC is inspired by the excellent [TorchHD](https://github.com/hyperdimension
 - [x] Simple examples (basic operations, Kanerva, classification)
 - [x] RandomEncoder, LevelEncoder, ProjectionEncoder
 
-### Phase 2: Feature Complete ⏳ **35% Complete**
+### Phase 2: Feature Complete - 35% Complete
 
 #### VSA Models (50% done)
 - [x] Binary Spatter Codes (BSC)
@@ -337,7 +337,7 @@ JAX-HDC is inspired by the excellent [TorchHD](https://github.com/hyperdimension
 - [ ] Test coverage for models and embeddings
 - [ ] Integration tests
 
-### Phase 3: Advanced 🔮 **0% Complete**
+### Phase 3: Advanced - 0% Complete
 
 - [ ] Distributed training support (pmap, sharding)
 - [ ] Mixed precision training (BF16/FP16)
