@@ -287,6 +287,67 @@ If you use JAX-HDC in your research, please cite:
 
 JAX-HDC is inspired by the excellent [TorchHD](https://github.com/hyperdimensional-computing/torchhd) library. We thank the TorchHD authors for their foundational work in creating accessible HDC tools.
 
+## Development Roadmap
+
+### Phase 1: MVP ✅ **100% Complete**
+
+- [x] Core functional operations (bind, bundle, permute, similarity)
+- [x] BSC and MAP VSA models
+- [x] HRR and FHRR VSA models
+- [x] Random hypervector generation
+- [x] Basic centroid classifier
+- [x] Adaptive HDC classifier
+- [x] Unit tests and documentation
+- [x] Simple examples (basic operations, Kanerva, classification)
+- [x] RandomEncoder, LevelEncoder, ProjectionEncoder
+
+### Phase 2: Feature Complete ⏳ **35% Complete**
+
+#### VSA Models (50% done)
+- [x] Binary Spatter Codes (BSC)
+- [x] Multiply-Add-Permute (MAP)
+- [x] Holographic Reduced Representations (HRR)
+- [x] Fourier HRR (FHRR)
+- [ ] Binary Sparse Block Codes (B-SBC)
+- [ ] Cyclic Group Representation (CGR)
+- [ ] Modular Composite Representation (MCR)
+- [ ] Vector-Derived Transformation Binding (VTB)
+
+#### Embeddings (60% done)
+- [x] RandomEncoder for discrete features
+- [x] LevelEncoder for continuous values
+- [x] ProjectionEncoder for high-dimensional data
+- [ ] KernelEncoder (RBF kernel approximation)
+- [ ] GraphEncoder for graph structures
+
+#### Models (50% done)
+- [x] CentroidClassifier
+- [x] AdaptiveHDC
+- [ ] Learning Vector Quantization (LVQ)
+- [ ] Regularized Least Squares
+
+#### Memory Modules (0% done)
+- [ ] Sparse Distributed Memory (SDM)
+- [ ] Modern Hopfield Networks
+- [ ] Attention-based retrieval
+
+#### Infrastructure (20% done)
+- [x] Comprehensive test suite (functional, vsa)
+- [ ] Performance benchmarks vs TorchHD
+- [ ] Test coverage for models and embeddings
+- [ ] Integration tests
+
+### Phase 3: Advanced 🔮 **0% Complete**
+
+- [ ] Distributed training support (pmap, sharding)
+- [ ] Mixed precision training (BF16/FP16)
+- [ ] Custom XLA kernels for critical operations
+- [ ] Integration with Flax/Optax for neural-HDC hybrids
+- [ ] Extended documentation and tutorials
+- [ ] Community building and PyPI release
+- [ ] GitHub Actions CI/CD pipeline
+- [ ] ReadTheDocs integration
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
