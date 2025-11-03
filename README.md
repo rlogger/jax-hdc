@@ -1,6 +1,8 @@
 <p align="center">
     <a href="https://github.com/rlogger/jax-hdc/blob/main/LICENSE"><img alt="GitHub license" src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat" /></a>
-    <a href="https://pypi.org/project/jax-hdc/"><img alt="pypi version" src="https://img.shields.io/pypi/v/jax-hdc.svg?style=flat&color=blue" /></a>
+    <img alt="Development Status" src="https://img.shields.io/badge/status-alpha-orange.svg?style=flat" />
+    <img alt="Version" src="https://img.shields.io/badge/version-0.1.0--alpha-blue.svg?style=flat" />
+    <img alt="Python" src="https://img.shields.io/badge/python-3.9%2B-blue.svg?style=flat" />
     <img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat" />
 </p>
 
@@ -8,25 +10,23 @@
 
 **A high-performance JAX library for Hyperdimensional Computing and Vector Symbolic Architectures**
 
-JAX-HDC is a Python library for _Hyperdimensional Computing_ (HDC) and _Vector Symbolic Architectures_ (VSA) built on JAX. By leveraging JAX's XLA compilation, automatic vectorization, and hardware acceleration, JAX-HDC achieves 10-100x speedups over PyTorch-based implementations while maintaining clean, functional code.
+JAX-HDC is a Python library for _Hyperdimensional Computing_ (HDC) and _Vector Symbolic Architectures_ (VSA) built on JAX. The library leverages JAX's XLA compilation, automatic vectorization, and hardware acceleration to provide efficient HDC implementations with a functional programming interface.
+
+**Development Status**: Alpha - Core functionality implemented, API subject to change.
 
 ## Features
 
-- XLA compilation and automatic kernel fusion for 10-100x speedups over baseline implementations
+- XLA compilation and automatic kernel fusion through JAX
 - Native GPU/TPU support through JAX backend
-- Pure functional design enabling composition with JAX transformations (jit, vmap, grad, pmap)
+- Functional design compatible with JAX transformations (jit, vmap, pmap)
 - Four VSA model implementations: BSC, MAP, HRR, FHRR
 - Feature encoders for discrete, continuous, and high-dimensional data
 - Classification models including centroid-based and adaptive methods
-- Comprehensive test coverage with property-based verification
+- Test coverage for core operations and models
 
 ## Installation
 
-### From PyPI (recommended)
-
-```bash
-pip install jax-hdc
-```
+**Note**: JAX-HDC is currently in alpha development and not yet published to PyPI.
 
 ### From source
 
@@ -36,13 +36,19 @@ cd jax-hdc
 pip install -e .
 ```
 
-### With development dependencies
+This installs the package in development mode with core dependencies (jax, jaxlib, numpy, optax).
+
+### Development installation
+
+For development with testing and code quality tools:
 
 ```bash
 pip install -e ".[dev]"
 ```
 
-### With example dependencies
+### Running examples
+
+To run the examples with additional dependencies:
 
 ```bash
 pip install -e ".[examples]"

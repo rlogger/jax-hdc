@@ -4,12 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jax-hdc"
-version = "0.1.0"
+version = "0.1.0-alpha"
 description = "A high-performance JAX library for Hyperdimensional Computing and Vector Symbolic Architectures"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
+    {name = "Rajdeep Singh"},
+]
+maintainers = [
     {name = "JAX-HDC Contributors"},
 ]
 keywords = [
