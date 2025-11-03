@@ -194,6 +194,8 @@ python examples/kanerva_example.py
 ```
 Structured knowledge representation and analogical reasoning.
 
+Paper: [What's the Dollar of Mexico?](https://redwood.berkeley.edu/wp-content/uploads/2020/05/kanerva2010what.pdf) (Kanerva, 2010)
+
 ### Classification
 ```bash
 python examples/classification_simple.py

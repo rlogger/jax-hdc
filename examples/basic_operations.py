@@ -6,6 +6,14 @@ Demonstrates fundamental operations of Hyperdimensional Computing:
 - Bundling (similar vector aggregation)
 - Similarity computation
 - Permutation for sequence encoding
+
+References:
+- Kanerva, P. (2009). "Hyperdimensional Computing: An Introduction to Computing
+  in Distributed Representation with High-Dimensional Random Vectors."
+  Cognitive Computation, 1(2), 139-159.
+
+- Plate, T. A. (1995). "Holographic Reduced Representations."
+  IEEE Transactions on Neural Networks, 6(3), 623-641.
 """
 
 import jax

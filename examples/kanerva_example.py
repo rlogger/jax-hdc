@@ -1,11 +1,16 @@
 """Kanerva's 'Dollar of Mexico' example.
 
 This example implements the classic HDC demonstration from:
-"What We Mean When We Say 'What's the Dollar of Mexico?': Prototypes and Mapping in Concept Space"
+"What We Mean When We Say 'What's the Dollar of Mexico?':
+Prototypes and Mapping in Concept Space"
 by Pentti Kanerva (2010)
 
+Paper: https://redwood.berkeley.edu/wp-content/uploads/2020/05/kanerva2010what.pdf
+Citation: P. Kanerva, "What We Mean When We Say 'What's the Dollar of Mexico?':
+          Prototypes and Mapping in Concept Space," 2010 AAAI Fall Symposium Series.
+
 The example shows how to use HDC to represent and query relationships between
-countries, capitals, and currencies.
+countries, capitals, and currencies using high-dimensional vector operations.
 """
 
 import jax
