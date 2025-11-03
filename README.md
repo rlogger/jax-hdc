@@ -1,5 +1,5 @@
 <p align="center">
-    <a href="https://github.com/rajdeepsingh/jax-hdc/blob/main/LICENSE"><img alt="GitHub license" src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat" /></a>
+    <a href="https://github.com/rlogger/jax-hdc/blob/main/LICENSE"><img alt="GitHub license" src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat" /></a>
     <a href="https://pypi.org/project/jax-hdc/"><img alt="pypi version" src="https://img.shields.io/pypi/v/jax-hdc.svg?style=flat&color=blue" /></a>
     <img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat" />
 </p>
@@ -31,7 +31,7 @@ pip install jax-hdc
 ### From source
 
 ```bash
-git clone https://github.com/rajdeepsingh/jax-hdc.git
+git clone https://github.com/rlogger/jax-hdc.git
 cd jax-hdc
 pip install -e .
 ```
@@ -280,7 +280,7 @@ If you use JAX-HDC in your research, please cite:
   author  = {Singh, Rajdeep},
   journal = {arXiv preprint arXiv:XXXX.XXXXX},
   year    = {2024},
-  url     = {https://github.com/rajdeepsingh/jax-hdc}
+  url     = {https://github.com/rlogger/jax-hdc}
 }
 ```
 ## Acknowledgments
@@ -362,6 +362,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## Links
 
 - Documentation: https://jax-hdc.readthedocs.io
-- Source Code: https://github.com/rajdeepsingh/jax-hdc
-- Issue Tracker: https://github.com/rajdeepsingh/jax-hdc/issues
+- Source Code: https://github.com/rlogger/jax-hdc
+- Issue Tracker: https://github.com/rlogger/jax-hdc/issues
 - PyPI: https://pypi.org/project/jax-hdc/

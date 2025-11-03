@@ -218,7 +218,7 @@ encode_batch = jax.vmap(encode_single)
 
 ### For Development:
 ```bash
-cd /Users/rajdeepsingh/Documents/GitHub/jax-hdc
+cd jax-hdc
 pip install -e ".[dev]"
 ```
 

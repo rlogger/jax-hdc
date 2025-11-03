@@ -13,7 +13,7 @@ Please be respectful and constructive in all interactions. We aim to maintain a 
 1. Fork and clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/jax-hdc.git
+git clone https://github.com/rlogger/jax-hdc.git
 cd jax-hdc
 ```
 

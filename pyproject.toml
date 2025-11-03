@@ -62,10 +62,10 @@ examples = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/jax-hdc"
+Homepage = "https://github.com/rlogger/jax-hdc"
 Documentation = "https://jax-hdc.readthedocs.io"
-Repository = "https://github.com/yourusername/jax-hdc"
-"Bug Tracker" = "https://github.com/yourusername/jax-hdc/issues"
+Repository = "https://github.com/rlogger/jax-hdc"
+"Bug Tracker" = "https://github.com/rlogger/jax-hdc/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
