@@ -275,11 +275,24 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 If you use JAX-HDC in your research, please cite:
 
 ```bibtex
+@article{singh2024jaxhdc,
+  title   = {JAX-HDC: A High-Performance Library for Hyperdimensional Computing with Hardware Acceleration},
+  author  = {Singh, Rajdeep},
+  journal = {arXiv preprint arXiv:XXXX.XXXXX},
+  year    = {2024},
+  url     = {https://github.com/rajdeepsingh/jax-hdc}
+}
+```
+
+**Note**: Paper is in preparation. For now, you can cite the software repository:
+
+```bibtex
 @software{jaxhdc2024,
-  title = {JAX-HDC: High-Performance Hyperdimensional Computing in JAX},
-  author = {JAX-HDC Contributors},
-  year = {2024},
-  url = {https://github.com/rajdeepsingh/jax-hdc}
+  title   = {JAX-HDC: High-Performance Hyperdimensional Computing in JAX},
+  author  = {Singh, Rajdeep and Contributors},
+  year    = {2024},
+  version = {0.1.0},
+  url     = {https://github.com/rajdeepsingh/jax-hdc}
 }
 ```
 
