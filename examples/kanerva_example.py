@@ -130,10 +130,10 @@ def main():
     print(f"\nBest match: {best_match} (similarity: {best_similarity:.4f})")
 
     if best_match == "Mexican Peso":
-        print("\n✓ Success! The system correctly identified the Mexican Peso")
-        print("  as the currency corresponding to Mexico (analogous to the US Dollar for USA)")
+        print("\nResult: Correct identification of Mexican Peso")
+        print("  Currency mapping Mexico -> Peso analogous to USA -> Dollar")
     else:
-        print(f"\n✗ Unexpected result. Expected 'Mexican Peso', got '{best_match}'")
+        print(f"\nResult: Unexpected match '{best_match}' (expected 'Mexican Peso')")
 
     # Additional queries
     print("\n" + "=" * 70)
@@ -151,10 +151,10 @@ def main():
     print(f"Answer: {memory_labels[capital_match]} (similarity: {capital_sims[capital_match]:.4f})")
 
     print("\n" + "=" * 70)
-    print("Example completed!")
+    print("Example Complete")
     print("=" * 70)
-    print("\nThis demonstrates how HDC can represent and query structured knowledge")
-    print("using high-dimensional vectors and simple operations (bind, bundle, similarity).")
+    print("\nDemonstrates structured knowledge representation and analogical reasoning")
+    print("using hyperdimensional vector operations: bind, bundle, and similarity.")
 
 
 if __name__ == "__main__":

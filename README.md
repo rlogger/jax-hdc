@@ -12,13 +12,13 @@ JAX-HDC is a Python library for _Hyperdimensional Computing_ (HDC) and _Vector S
 
 ## Features
 
-- **High Performance**: XLA compilation and automatic kernel fusion for 10-100x speedups
-- **Hardware Accelerated**: Native GPU/TPU support through JAX
-- **Functional Design**: Pure functions enabling all JAX transformations (jit, vmap, grad, pmap)
-- **Multiple VSA Models**: BSC, MAP, HRR, FHRR implementations
-- **Rich Encoders**: Random, level, and projection encoders for different data types
-- **Easy to Use**: Simple, intuitive API inspired by TorchHD
-- **Well Tested**: Comprehensive test suite ensuring correctness
+- XLA compilation and automatic kernel fusion for 10-100x speedups over baseline implementations
+- Native GPU/TPU support through JAX backend
+- Pure functional design enabling composition with JAX transformations (jit, vmap, grad, pmap)
+- Four VSA model implementations: BSC, MAP, HRR, FHRR
+- Feature encoders for discrete, continuous, and high-dimensional data
+- Classification models including centroid-based and adaptive methods
+- Comprehensive test coverage with property-based verification
 
 ## Installation
 
@@ -180,25 +180,25 @@ sim = bsc.similarity(x, y)
 
 ## Examples
 
-The `examples/` directory contains several demonstrations:
+The `examples/` directory contains reference implementations:
 
 ### Basic Operations
 ```bash
 python examples/basic_operations.py
 ```
-Demonstrates core HDC operations (binding, bundling, similarity).
+Core HDC operations: binding, bundling, permutation, and similarity computation.
 
 ### Kanerva's "Dollar of Mexico"
 ```bash
 python examples/kanerva_example.py
 ```
-Classic HDC example showing structured knowledge representation.
+Structured knowledge representation and analogical reasoning.
 
-### Simple Classification
+### Classification
 ```bash
 python examples/classification_simple.py
 ```
-End-to-end classification with synthetic data.
+End-to-end classification pipeline with feature encoding and model training.
 
 ## Documentation
 
@@ -259,7 +259,7 @@ mypy jax_hdc/
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+Contributions are accepted via Pull Requests. For major changes, open an issue first to discuss the proposed modifications.
 
 ### Areas for Contribution
 

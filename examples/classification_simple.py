@@ -161,13 +161,13 @@ def main():
 
     print(f"\nFirst {n_show} test samples:")
     print("-" * 70)
-    print(f"{'Sample':<8} {'True':<8} {'Pred':<8} {'Correct':<10} {'Confidence':<12}")
+    print(f"{'Sample':<8} {'True':<8} {'Pred':<8} {'Match':<10} {'Confidence':<12}")
     print("-" * 70)
 
     for i in range(n_show):
         true_label = test_labels[i]
         pred_label = predictions[i]
-        correct = "✓" if true_label == pred_label else "✗"
+        correct = "Y" if true_label == pred_label else "N"
         confidence = probs[i, pred_label]
 
         print(f"{i:<8} {true_label:<8} {pred_label:<8} {correct:<10} {confidence:.4f}")
@@ -199,14 +199,14 @@ def main():
         print(row)
 
     print("\n" + "=" * 70)
-    print("Example completed!")
+    print("Classification Example Complete")
     print("=" * 70)
 
-    print("\nKey takeaways:")
-    print("  1. HDC can encode discrete features into hypervectors")
-    print("  2. Centroid classifier is simple but effective")
-    print("  3. Training is extremely fast (single pass)")
-    print("  4. Performance depends on data separability and dimensions")
+    print("\nNotes:")
+    print("  - Discrete feature encoding via random projection")
+    print("  - Centroid classifier: single-pass training")
+    print("  - Training time: O(n) in number of samples")
+    print("  - Accuracy depends on dimensionality and class separability")
 
 
 if __name__ == "__main__":

@@ -1,11 +1,11 @@
 """Basic operations example for JAX-HDC.
 
-This example demonstrates the fundamental operations of Hyperdimensional Computing:
-- Creating random hypervectors
-- Binding (combining dissimilar vectors)
-- Bundling (combining similar vectors)
-- Computing similarity
-- Permutation for sequences
+Demonstrates fundamental operations of Hyperdimensional Computing:
+- Random hypervector generation
+- Binding (dissimilar vector combination)
+- Bundling (similar vector aggregation)
+- Similarity computation
+- Permutation for sequence encoding
 """
 
 import jax
@@ -173,7 +173,7 @@ def demo_bsc_vs_map():
 
 
 def main():
-    """Run all demos."""
+    """Run all demonstrations."""
     print("\n" + "=" * 60)
     print("JAX-HDC: Basic Operations Examples")
     print("=" * 60)
@@ -184,7 +184,7 @@ def main():
     demo_bsc_vs_map()
 
     print("\n" + "=" * 60)
-    print("All demos completed!")
+    print("Examples Complete")
     print("=" * 60)
 
 
