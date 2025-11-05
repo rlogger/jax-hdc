@@ -229,7 +229,9 @@ JAX-HDC leverages JAX's performance advantages:
 - **Parallelization**: `pmap` for multi-device training
 - **JIT Compilation**: Eliminate Python overhead
 
-Example benchmark (10,000 dimensions):
+Predicted performance gains (10,000 dimensions):
+
+**Note**: These are predicted performance characteristics based on JAX benchmarks, not formal measurements. Actual performance is hardware and workload dependent. Formal benchmarking suite is planned for v0.2.0-beta.
 
 | Operation | NumPy | PyTorch | JAX-HDC | Speedup |
 |-----------|-------|---------|---------|---------|
