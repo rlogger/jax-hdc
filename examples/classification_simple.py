@@ -1,12 +1,19 @@
 """Simple classification example with synthetic data.
 
-This example demonstrates how to use JAX-HDC for classification:
-1. Generate synthetic data
-2. Encode features into hypervectors
-3. Train a centroid classifier
-4. Evaluate accuracy
+This example demonstrates an end-to-end classification pipeline using JAX-HDC:
+1. Generate synthetic dataset with learnable patterns
+2. Encode discrete features into hypervectors using RandomEncoder
+3. Train a CentroidClassifier (single-pass, non-iterative)
+4. Evaluate accuracy and analyze predictions
+5. Visualize confusion matrix
+
+This demonstrates HDC's core strengths:
+- One-shot learning from centroids
+- Interpretable similarity-based classification
+- Efficient training without backpropagation
 """
 
+import time
 import jax
 import jax.numpy as jnp
 from jax_hdc import MAP
@@ -132,10 +139,15 @@ def main():
     )
 
     print("\nTraining classifier (computing class centroids)...")
+    start_time = time.perf_counter()
     classifier = classifier.fit(train_hvs, train_labels)
+    train_hvs.block_until_ready()
+    train_time = (time.perf_counter() - start_time) * 1000
 
     print(f"Trained classifier with {n_classes} prototypes")
     print(f"Prototype shape: {classifier.prototypes.shape}")
+    print(f"Training time: {train_time:.2f}ms")
+    print(f"Training is O(n) - single pass through data to compute centroids")
 
     # Evaluate
     print("\n" + "=" * 70)
@@ -202,11 +214,24 @@ def main():
     print("Classification Example Complete")
     print("=" * 70)
 
-    print("\nNotes:")
-    print("  - Discrete feature encoding via random projection")
-    print("  - Centroid classifier: single-pass training")
-    print("  - Training time: O(n) in number of samples")
-    print("  - Accuracy depends on dimensionality and class separability")
+    print("\nKey Observations:")
+    print(f"  - Training time: {train_time:.2f}ms for {n_train} samples")
+    print(f"  - Training accuracy: {train_acc:.2%}")
+    print(f"  - Test accuracy: {test_acc:.2%}")
+    print(f"  - Model size: {classifier.prototypes.size * 4 / 1024:.1f} KB ({n_classes} prototypes)")
+
+    print("\nHDC Classification Characteristics:")
+    print("  - One-shot learning: Single pass through data (no iterations)")
+    print("  - Interpretable: Predictions based on similarity to class centroids")
+    print("  - Efficient: O(n) training time, O(k·d) inference where k=classes, d=dims")
+    print("  - No backpropagation: Does not require gradients")
+    print("  - Accuracy improves with higher dimensionality (tested: 10k dims)")
+
+    return {
+        "train_accuracy": float(train_acc),
+        "test_accuracy": float(test_acc),
+        "train_time_ms": float(train_time),
+    }
 
 
 if __name__ == "__main__":

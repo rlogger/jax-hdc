@@ -9,14 +9,38 @@ Paper: https://redwood.berkeley.edu/wp-content/uploads/2020/05/kanerva2010what.p
 Citation: P. Kanerva, "What We Mean When We Say 'What's the Dollar of Mexico?':
           Prototypes and Mapping in Concept Space," 2010 AAAI Fall Symposium Series.
 
-The example shows how to use HDC to represent and query relationships between
-countries, capitals, and currencies using high-dimensional vector operations.
+Demonstrates structured knowledge representation and analogical reasoning.
+
+The example encodes country information (country name, capital, currency) as
+hypervectors, then uses binding and bundling to create relational representations.
+The key insight: mappings between structured representations can answer analogical
+queries like "What's the dollar of Mexico?" (answer: Mexican Peso).
+
+Concepts demonstrated:
+- Role-filler binding to create structured representations
+- Bundle to combine multiple role-filler pairs
+- Inverse binding to create mappings between structures
+- Similarity search over memory to answer queries
 """
 
 import jax
 import jax.numpy as jnp
 from jax_hdc import MAP
 from jax_hdc.functional import cosine_similarity
+
+
+def create_random_hypervector(key, model, dimensions):
+    """Create a random hypervector with improved key splitting.
+
+    Args:
+        key: JAX random key
+        model: VSA model
+        dimensions: Hypervector dimensionality
+
+    Returns:
+        Random hypervector
+    """
+    return model.random(key, (dimensions,))
 
 
 def main():
@@ -32,11 +56,15 @@ def main():
 
     print(f"\nUsing {d}-dimensional hypervectors")
 
-    # Create role hypervectors
+    # Create role hypervectors (slots in the structure)
     print("\nCreating role hypervectors (keys)...")
+    print("Roles define the structure: each country has a country, capital, and currency")
     keys_key, values_key = jax.random.split(key)
-    keys = model.random(keys_key, (3, d))
-    country_key, capital_key, currency_key = keys
+    role_keys = jax.random.split(keys_key, 3)
+    country_key = model.random(role_keys[0], (d,))
+    capital_key = model.random(role_keys[1], (d,))
+    currency_key = model.random(role_keys[2], (d,))
+    keys = jnp.stack([country_key, capital_key, currency_key])
 
     print("  - country (role)")
     print("  - capital (role)")
@@ -44,9 +72,11 @@ def main():
 
     # Create filler hypervectors for USA
     print("\nCreating filler hypervectors for United States...")
-    usa = model.random(values_key, (d,))
-    wdc = model.random(jax.random.split(values_key)[0], (d,))
-    usd = model.random(jax.random.split(values_key)[1], (d,))
+    print("Fillers are the actual values that fill the roles")
+    us_keys = jax.random.split(values_key, 6)
+    usa = model.random(us_keys[0], (d,))
+    wdc = model.random(us_keys[1], (d,))
+    usd = model.random(us_keys[2], (d,))
 
     print("  - USA (country filler)")
     print("  - Washington D.C. (capital filler)")
@@ -54,9 +84,9 @@ def main():
 
     # Create filler hypervectors for Mexico
     print("\nCreating filler hypervectors for Mexico...")
-    mex = model.random(jax.random.split(values_key)[0], (d,))
-    mxc = model.random(jax.random.split(values_key)[1], (d,))
-    mxn = model.random(jax.random.split(jax.random.split(values_key)[1])[0], (d,))
+    mex = model.random(us_keys[3], (d,))
+    mxc = model.random(us_keys[4], (d,))
+    mxn = model.random(us_keys[5], (d,))
 
     print("  - Mexico (country filler)")
     print("  - Mexico City (capital filler)")
