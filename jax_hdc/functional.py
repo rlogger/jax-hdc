@@ -16,6 +16,7 @@ import jax.numpy as jnp
 # Binary Spatter Code (BSC) Operations
 # ============================================================================
 
+
 @jax.jit
 def bind_bsc(x: jax.Array, y: jax.Array) -> jax.Array:
     """Bind two hypervectors using XOR for Binary Spatter Codes.
@@ -126,6 +127,7 @@ def hamming_similarity(x: jax.Array, y: jax.Array) -> jax.Array:
 # Multiply-Add-Permute (MAP) Operations
 # ============================================================================
 
+
 @jax.jit
 def bind_map(x: jax.Array, y: jax.Array) -> jax.Array:
     """Bind two hypervectors using element-wise multiplication for MAP.
@@ -231,6 +233,7 @@ def cosine_similarity(x: jax.Array, y: jax.Array) -> jax.Array:
 # Universal Operations (work with all VSA models)
 # ============================================================================
 
+
 @jax.jit
 def permute(x: jax.Array, shifts: int = 1) -> jax.Array:
     """Cyclically permute a hypervector to encode sequence information.
@@ -263,7 +266,7 @@ def cleanup(
     query: jax.Array,
     memory: jax.Array,
     similarity_fn: Callable[[jax.Array, jax.Array], jax.Array] = cosine_similarity,
-    return_similarity: bool = False
+    return_similarity: bool = False,
 ) -> Union[jax.Array, tuple[jax.Array, jax.Array]]:
     """Find the most similar vector in memory to the query.
 
@@ -313,6 +316,7 @@ batch_cosine_similarity = jax.vmap(cosine_similarity, in_axes=(0, None))
 # ============================================================================
 # Holographic Reduced Representations (HRR) Operations
 # ============================================================================
+
 
 @jax.jit
 def bind_hrr(x: jax.Array, y: jax.Array) -> jax.Array:

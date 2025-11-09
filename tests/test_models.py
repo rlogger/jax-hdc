@@ -13,9 +13,7 @@ class TestCentroidClassifier:
     def test_creation_with_defaults(self):
         """Test CentroidClassifier creation with default parameters."""
         classifier = CentroidClassifier.create(
-            num_classes=5,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
+            num_classes=5, dimensions=100, key=jax.random.PRNGKey(42)
         )
 
         assert classifier.num_classes == 5
@@ -26,10 +24,7 @@ class TestCentroidClassifier:
     def test_creation_with_bsc(self):
         """Test CentroidClassifier with BSC model."""
         classifier = CentroidClassifier.create(
-            num_classes=3,
-            dimensions=50,
-            vsa_model="bsc",
-            key=jax.random.PRNGKey(42)
+            num_classes=3, dimensions=50, vsa_model="bsc", key=jax.random.PRNGKey(42)
         )
 
         assert classifier.vsa_model_name == "bsc"
@@ -39,10 +34,7 @@ class TestCentroidClassifier:
         """Test creation with VSAModel instance."""
         vsa = MAP.create(dimensions=100)
         classifier = CentroidClassifier.create(
-            num_classes=3,
-            dimensions=100,
-            vsa_model=vsa,
-            key=jax.random.PRNGKey(42)
+            num_classes=3, dimensions=100, vsa_model=vsa, key=jax.random.PRNGKey(42)
         )
 
         assert classifier.vsa_model_name == "map"
@@ -51,9 +43,7 @@ class TestCentroidClassifier:
         """Test creation with custom initial prototypes."""
         initial = jax.random.normal(jax.random.PRNGKey(42), (3, 100))
         classifier = CentroidClassifier.create(
-            num_classes=3,
-            dimensions=100,
-            initial_prototypes=initial
+            num_classes=3, dimensions=100, initial_prototypes=initial
         )
 
         assert jnp.allclose(classifier.prototypes, initial)
@@ -61,9 +51,7 @@ class TestCentroidClassifier:
     def test_similarity_computation(self):
         """Test similarity computation between query and prototypes."""
         classifier = CentroidClassifier.create(
-            num_classes=3,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
+            num_classes=3, dimensions=100, key=jax.random.PRNGKey(42)
         )
 
         query = jax.random.normal(jax.random.PRNGKey(0), (100,))
@@ -75,9 +63,7 @@ class TestCentroidClassifier:
     def test_predict_single_query(self):
         """Test prediction on a single query."""
         classifier = CentroidClassifier.create(
-            num_classes=3,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
+            num_classes=3, dimensions=100, key=jax.random.PRNGKey(42)
         )
 
         query = jax.random.normal(jax.random.PRNGKey(0), (100,))
@@ -89,9 +75,7 @@ class TestCentroidClassifier:
     def test_predict_batch(self):
         """Test prediction on a batch of queries."""
         classifier = CentroidClassifier.create(
-            num_classes=3,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
+            num_classes=3, dimensions=100, key=jax.random.PRNGKey(42)
         )
 
         queries = jax.random.normal(jax.random.PRNGKey(0), (10, 100))
@@ -103,9 +87,7 @@ class TestCentroidClassifier:
     def test_predict_proba_single_query(self):
         """Test probability prediction on a single query."""
         classifier = CentroidClassifier.create(
-            num_classes=3,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
+            num_classes=3, dimensions=100, key=jax.random.PRNGKey(42)
         )
 
         query = jax.random.normal(jax.random.PRNGKey(0), (100,))
@@ -118,9 +100,7 @@ class TestCentroidClassifier:
     def test_predict_proba_batch(self):
         """Test probability prediction on a batch."""
         classifier = CentroidClassifier.create(
-            num_classes=3,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
+            num_classes=3, dimensions=100, key=jax.random.PRNGKey(42)
         )
 
         queries = jax.random.normal(jax.random.PRNGKey(0), (10, 100))
@@ -134,16 +114,13 @@ class TestCentroidClassifier:
         """Test fitting the classifier on training data."""
         vsa = MAP.create(dimensions=100)
         classifier = CentroidClassifier.create(
-            num_classes=3,
-            dimensions=100,
-            vsa_model=vsa,
-            key=jax.random.PRNGKey(42)
+            num_classes=3, dimensions=100, vsa_model=vsa, key=jax.random.PRNGKey(42)
         )
 
         # Create training data
         key = jax.random.PRNGKey(0)
         train_hvs = vsa.random(key, (30, 100))
-        train_labels = jnp.array([0]*10 + [1]*10 + [2]*10)
+        train_labels = jnp.array([0] * 10 + [1] * 10 + [2] * 10)
 
         # Fit classifier
         trained_classifier = classifier.fit(train_hvs, train_labels)
@@ -156,10 +133,7 @@ class TestCentroidClassifier:
         """Test that fitting improves accuracy on separable data."""
         vsa = MAP.create(dimensions=1000)
         classifier = CentroidClassifier.create(
-            num_classes=3,
-            dimensions=1000,
-            vsa_model=vsa,
-            key=jax.random.PRNGKey(42)
+            num_classes=3, dimensions=1000, vsa_model=vsa, key=jax.random.PRNGKey(42)
         )
 
         # Create separable training data with distinct prototypes
@@ -194,9 +168,7 @@ class TestCentroidClassifier:
     def test_update_online(self):
         """Test online update with a single sample."""
         classifier = CentroidClassifier.create(
-            num_classes=3,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
+            num_classes=3, dimensions=100, key=jax.random.PRNGKey(42)
         )
 
         sample = jax.random.normal(jax.random.PRNGKey(0), (100,))
@@ -214,10 +186,7 @@ class TestCentroidClassifier:
         """Test accuracy scoring."""
         vsa = MAP.create(dimensions=100)
         classifier = CentroidClassifier.create(
-            num_classes=3,
-            dimensions=100,
-            vsa_model=vsa,
-            key=jax.random.PRNGKey(42)
+            num_classes=3, dimensions=100, vsa_model=vsa, key=jax.random.PRNGKey(42)
         )
 
         # Create test data
@@ -232,15 +201,13 @@ class TestCentroidClassifier:
     def test_fit_with_empty_class(self):
         """Test fitting when some classes have no samples."""
         classifier = CentroidClassifier.create(
-            num_classes=5,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
+            num_classes=5, dimensions=100, key=jax.random.PRNGKey(42)
         )
 
         # Create training data with only 3 classes
         vsa = MAP.create(dimensions=100)
         train_hvs = vsa.random(jax.random.PRNGKey(0), (30, 100))
-        train_labels = jnp.array([0]*10 + [1]*10 + [2]*10)  # Classes 3 and 4 are empty
+        train_labels = jnp.array([0] * 10 + [1] * 10 + [2] * 10)  # Classes 3 and 4 are empty
 
         trained_classifier = classifier.fit(train_hvs, train_labels)
 
@@ -251,14 +218,12 @@ class TestCentroidClassifier:
     def test_immutability(self):
         """Test that operations return new instances (immutability)."""
         classifier1 = CentroidClassifier.create(
-            num_classes=3,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
+            num_classes=3, dimensions=100, key=jax.random.PRNGKey(42)
         )
 
         vsa = MAP.create(dimensions=100)
         train_hvs = vsa.random(jax.random.PRNGKey(0), (30, 100))
-        train_labels = jnp.array([0]*10 + [1]*10 + [2]*10)
+        train_labels = jnp.array([0] * 10 + [1] * 10 + [2] * 10)
 
         classifier2 = classifier1.fit(train_hvs, train_labels)
 
@@ -273,11 +238,7 @@ class TestAdaptiveHDC:
 
     def test_creation(self):
         """Test AdaptiveHDC creation."""
-        classifier = AdaptiveHDC.create(
-            num_classes=5,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
-        )
+        classifier = AdaptiveHDC.create(num_classes=5, dimensions=100, key=jax.random.PRNGKey(42))
 
         assert classifier.num_classes == 5
         assert classifier.dimensions == 100
@@ -289,10 +250,7 @@ class TestAdaptiveHDC:
     def test_creation_with_bsc(self):
         """Test AdaptiveHDC with BSC model."""
         classifier = AdaptiveHDC.create(
-            num_classes=3,
-            dimensions=50,
-            vsa_model="bsc",
-            key=jax.random.PRNGKey(42)
+            num_classes=3, dimensions=50, vsa_model="bsc", key=jax.random.PRNGKey(42)
         )
 
         assert classifier.vsa_model_name == "bsc"
@@ -300,11 +258,7 @@ class TestAdaptiveHDC:
 
     def test_predict_single_query(self):
         """Test prediction on a single query."""
-        classifier = AdaptiveHDC.create(
-            num_classes=3,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
-        )
+        classifier = AdaptiveHDC.create(num_classes=3, dimensions=100, key=jax.random.PRNGKey(42))
 
         query = jax.random.normal(jax.random.PRNGKey(0), (100,))
         prediction = classifier.predict(query)
@@ -314,11 +268,7 @@ class TestAdaptiveHDC:
 
     def test_predict_batch(self):
         """Test prediction on a batch of queries."""
-        classifier = AdaptiveHDC.create(
-            num_classes=3,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
-        )
+        classifier = AdaptiveHDC.create(num_classes=3, dimensions=100, key=jax.random.PRNGKey(42))
 
         queries = jax.random.normal(jax.random.PRNGKey(0), (10, 100))
         predictions = classifier.predict(queries)
@@ -330,15 +280,12 @@ class TestAdaptiveHDC:
         """Test fitting with a single epoch."""
         vsa = MAP.create(dimensions=100)
         classifier = AdaptiveHDC.create(
-            num_classes=3,
-            dimensions=100,
-            vsa_model=vsa,
-            key=jax.random.PRNGKey(42)
+            num_classes=3, dimensions=100, vsa_model=vsa, key=jax.random.PRNGKey(42)
         )
 
         # Create training data
         train_hvs = vsa.random(jax.random.PRNGKey(0), (30, 100))
-        train_labels = jnp.array([0]*10 + [1]*10 + [2]*10)
+        train_labels = jnp.array([0] * 10 + [1] * 10 + [2] * 10)
 
         trained_classifier = classifier.fit(train_hvs, train_labels, epochs=1)
 
@@ -350,15 +297,12 @@ class TestAdaptiveHDC:
         """Test fitting with multiple epochs."""
         vsa = MAP.create(dimensions=100)
         classifier = AdaptiveHDC.create(
-            num_classes=3,
-            dimensions=100,
-            vsa_model=vsa,
-            key=jax.random.PRNGKey(42)
+            num_classes=3, dimensions=100, vsa_model=vsa, key=jax.random.PRNGKey(42)
         )
 
         # Create training data
         train_hvs = vsa.random(jax.random.PRNGKey(0), (30, 100))
-        train_labels = jnp.array([0]*10 + [1]*10 + [2]*10)
+        train_labels = jnp.array([0] * 10 + [1] * 10 + [2] * 10)
 
         trained_classifier = classifier.fit(train_hvs, train_labels, epochs=5)
 
@@ -368,10 +312,7 @@ class TestAdaptiveHDC:
         """Test accuracy scoring."""
         vsa = MAP.create(dimensions=100)
         classifier = AdaptiveHDC.create(
-            num_classes=3,
-            dimensions=100,
-            vsa_model=vsa,
-            key=jax.random.PRNGKey(42)
+            num_classes=3, dimensions=100, vsa_model=vsa, key=jax.random.PRNGKey(42)
         )
 
         # Create test data
@@ -386,10 +327,7 @@ class TestAdaptiveHDC:
         """Test that multiple epochs can improve accuracy."""
         vsa = MAP.create(dimensions=500)
         classifier = AdaptiveHDC.create(
-            num_classes=3,
-            dimensions=500,
-            vsa_model=vsa,
-            key=jax.random.PRNGKey(42)
+            num_classes=3, dimensions=500, vsa_model=vsa, key=jax.random.PRNGKey(42)
         )
 
         # Create separable training data
@@ -424,15 +362,11 @@ class TestAdaptiveHDC:
 
     def test_immutability(self):
         """Test that operations return new instances."""
-        classifier1 = AdaptiveHDC.create(
-            num_classes=3,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
-        )
+        classifier1 = AdaptiveHDC.create(num_classes=3, dimensions=100, key=jax.random.PRNGKey(42))
 
         vsa = MAP.create(dimensions=100)
         train_hvs = vsa.random(jax.random.PRNGKey(0), (30, 100))
-        train_labels = jnp.array([0]*10 + [1]*10 + [2]*10)
+        train_labels = jnp.array([0] * 10 + [1] * 10 + [2] * 10)
 
         classifier2 = classifier1.fit(train_hvs, train_labels, epochs=1)
 
@@ -441,11 +375,7 @@ class TestAdaptiveHDC:
 
     def test_update_prototypes_internal(self):
         """Test internal prototype update mechanism."""
-        classifier = AdaptiveHDC.create(
-            num_classes=3,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
-        )
+        classifier = AdaptiveHDC.create(num_classes=3, dimensions=100, key=jax.random.PRNGKey(42))
 
         sample = jax.random.normal(jax.random.PRNGKey(0), (100,))
         old_prototype = classifier.prototypes[1].copy()

@@ -10,8 +10,37 @@ import jax
 import jax.numpy as jnp
 from jax_hdc import functional as F
 
+# JAX compatibility: register_dataclass behavior changed across versions
+# In JAX >= 0.4.14, it can be used as a decorator without arguments
+# In older versions, it requires explicit data_fields and meta_fields
+try:
+    # Try newer JAX syntax (>= 0.4.14)
+    _test_cls = type("_Test", (), {"__annotations__": {"x": int}})
+    _test_dataclass = jax.tree_util.register_dataclass(_test_cls)
+    del _test_cls, _test_dataclass
 
-@jax.tree_util.register_dataclass
+    def register_dataclass(cls: type) -> type:
+        """Wrapper for jax.tree_util.register_dataclass."""
+        return jax.tree_util.register_dataclass(cls)
+
+except TypeError:
+    # Fallback for older JAX versions
+    import dataclasses as _dataclasses
+
+    def register_dataclass(cls: type) -> type:
+        """Compatibility wrapper for register_dataclass with older JAX versions."""
+        data_fields = []
+        meta_fields = []
+        for f in _dataclasses.fields(cls):
+            if f.metadata.get("static", False):
+                meta_fields.append(f.name)
+            else:
+                data_fields.append(f.name)
+
+        return jax.tree_util.register_dataclass(cls, data_fields, meta_fields)
+
+
+@register_dataclass
 @dataclass
 class VSAModel:
     """Base class for VSA models defining the interface."""
@@ -40,7 +69,7 @@ class VSAModel:
         raise NotImplementedError
 
 
-@jax.tree_util.register_dataclass
+@register_dataclass
 @dataclass
 class BSC(VSAModel):
     """Binary Spatter Codes (BSC) model.
@@ -110,7 +139,7 @@ class BSC(VSAModel):
         return jax.random.bernoulli(key, 0.5, shape=shape)
 
 
-@jax.tree_util.register_dataclass
+@register_dataclass
 @dataclass
 class MAP(VSAModel):
     """Multiply-Add-Permute (MAP) model.
@@ -183,7 +212,7 @@ class MAP(VSAModel):
         return vectors / (norm + 1e-8)
 
 
-@jax.tree_util.register_dataclass
+@register_dataclass
 @dataclass
 class HRR(VSAModel):
     """Holographic Reduced Representations (HRR) model.
@@ -258,7 +287,7 @@ class HRR(VSAModel):
         return vectors / (norm + 1e-8)
 
 
-@jax.tree_util.register_dataclass
+@register_dataclass
 @dataclass
 class FHRR(VSAModel):
     """Fourier Holographic Reduced Representations (FHRR) model.
@@ -329,7 +358,7 @@ class FHRR(VSAModel):
             Random unit complex hypervectors
         """
         # Random phases on unit circle
-        phases = jax.random.uniform(key, shape=shape, minval=0, maxval=2*jnp.pi)
+        phases = jax.random.uniform(key, shape=shape, minval=0, maxval=2 * jnp.pi)
         return jnp.exp(1j * phases)
 
 
@@ -357,8 +386,7 @@ def create_vsa_model(model_type: str = "map", dimensions: int = 10000) -> VSAMod
 
     if model_type not in models:
         raise ValueError(
-            f"Unknown VSA model: {model_type}. "
-            f"Available models: {list(models.keys())}"
+            f"Unknown VSA model: {model_type}. " f"Available models: {list(models.keys())}"
         )
 
     return models[model_type].create(dimensions=dimensions)  # type: ignore[attr-defined]

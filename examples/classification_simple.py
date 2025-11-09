@@ -107,7 +107,7 @@ def main():
         num_values=n_values,
         dimensions=dimensions,
         vsa_model=model,
-        key=data_key
+        key=data_key,
     )
 
     print(f"\nCreated RandomEncoder:")
@@ -133,9 +133,7 @@ def main():
     print("=" * 70)
 
     classifier = CentroidClassifier.create(
-        num_classes=n_classes,
-        dimensions=dimensions,
-        vsa_model=model
+        num_classes=n_classes, dimensions=dimensions, vsa_model=model
     )
 
     print("\nTraining classifier (computing class centroids)...")
@@ -218,7 +216,9 @@ def main():
     print(f"  - Training time: {train_time:.2f}ms for {n_train} samples")
     print(f"  - Training accuracy: {train_acc:.2%}")
     print(f"  - Test accuracy: {test_acc:.2%}")
-    print(f"  - Model size: {classifier.prototypes.size * 4 / 1024:.1f} KB ({n_classes} prototypes)")
+    print(
+        f"  - Model size: {classifier.prototypes.size * 4 / 1024:.1f} KB ({n_classes} prototypes)"
+    )
 
     print("\nHDC Classification Characteristics:")
     print("  - One-shot learning: Single pass through data (no iterations)")

@@ -269,7 +269,9 @@ def demo_bsc_vs_map():
     # Comparison
     print(f"\nComparison:")
     print(f"  Memory efficiency: BSC is {x_map.nbytes / x_bsc.nbytes:.1f}x smaller")
-    print(f"  Speed: {'BSC' if bsc_time < map_time else 'MAP'} is {max(bsc_time, map_time) / min(bsc_time, map_time):.1f}x faster")
+    print(
+        f"  Speed: {'BSC' if bsc_time < map_time else 'MAP'} is {max(bsc_time, map_time) / min(bsc_time, map_time):.1f}x faster"
+    )
     print(f"\nTrade-offs:")
     print(f"  BSC: Memory-efficient, discrete operations, XOR binding")
     print(f"  MAP: Gradient-friendly, smooth similarity, real-valued optimization")

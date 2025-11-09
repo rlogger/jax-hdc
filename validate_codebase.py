@@ -24,12 +24,13 @@ import jax.numpy as jnp
 
 class Colors:
     """ANSI color codes for terminal output."""
-    GREEN = '\033[92m'
-    RED = '\033[91m'
-    YELLOW = '\033[93m'
-    BLUE = '\033[94m'
-    BOLD = '\033[1m'
-    END = '\033[0m'
+
+    GREEN = "\033[92m"
+    RED = "\033[91m"
+    YELLOW = "\033[93m"
+    BLUE = "\033[94m"
+    BOLD = "\033[1m"
+    END = "\033[0m"
 
 
 def print_header(text: str) -> None:
@@ -72,12 +73,7 @@ def run_command(cmd: List[str], description: str) -> Tuple[bool, str]:
     """
     print_info(f"Running: {description}")
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=300
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
         return result.returncode == 0, result.stdout + result.stderr
     except subprocess.TimeoutExpired:
         return False, "Command timed out after 5 minutes"
@@ -88,10 +84,7 @@ def run_command(cmd: List[str], description: str) -> Tuple[bool, str]:
 def check_mypy() -> bool:
     """Run mypy type checking."""
     print_header("Type Checking (mypy)")
-    success, output = run_command(
-        ["python", "-m", "mypy", "jax_hdc/"],
-        "mypy jax_hdc/"
-    )
+    success, output = run_command(["python", "-m", "mypy", "jax_hdc/"], "mypy jax_hdc/")
 
     if success:
         print_success("Type checking passed! No type errors found.")
@@ -106,15 +99,14 @@ def check_tests() -> bool:
     """Run pytest test suite."""
     print_header("Test Suite (pytest)")
     success, output = run_command(
-        ["python", "-m", "pytest", "tests/", "-v", "--tb=short"],
-        "pytest tests/"
+        ["python", "-m", "pytest", "tests/", "-v", "--tb=short"], "pytest tests/"
     )
 
     if success:
         # Extract test count from output
-        lines = output.split('\n')
+        lines = output.split("\n")
         for line in lines:
-            if 'passed' in line:
+            if "passed" in line:
                 print_success(f"All tests passed! {line.strip()}")
                 return True
         print_success("All tests passed!")
@@ -130,7 +122,7 @@ def check_coverage() -> bool:
     print_header("Test Coverage")
     success, output = run_command(
         ["python", "-m", "pytest", "tests/", "--cov=jax_hdc", "--cov-report=term"],
-        "pytest --cov=jax_hdc"
+        "pytest --cov=jax_hdc",
     )
 
     if not success:
@@ -138,12 +130,12 @@ def check_coverage() -> bool:
         return False
 
     # Parse coverage percentage
-    lines = output.split('\n')
+    lines = output.split("\n")
     for line in lines:
-        if 'TOTAL' in line:
+        if "TOTAL" in line:
             parts = line.split()
             if len(parts) >= 4:
-                coverage = parts[-1].rstrip('%')
+                coverage = parts[-1].rstrip("%")
                 try:
                     cov_num = float(coverage)
                     if cov_num >= 90:
@@ -207,20 +199,25 @@ def check_imports() -> bool:
     try:
         # Import main package
         import jax_hdc
+
         print_success("jax_hdc package imports successfully")
 
         # Import submodules
         from jax_hdc import functional, vsa, embeddings, models, utils
+
         print_success("All submodules import successfully")
 
         # Check key classes/functions are available
         from jax_hdc import BSC, MAP, HRR, FHRR
+
         print_success("VSA models available")
 
         from jax_hdc import RandomEncoder, LevelEncoder, ProjectionEncoder
+
         print_success("Encoders available")
 
         from jax_hdc import CentroidClassifier, AdaptiveHDC
+
         print_success("Classifiers available")
 
         return True
@@ -257,24 +254,18 @@ def test_basic_functionality() -> bool:
 
         # Test encoder
         encoder = RandomEncoder.create(
-            num_features=10,
-            num_values=10,
-            dimensions=1000,
-            vsa_model='map',
-            key=key
+            num_features=10, num_values=10, dimensions=1000, vsa_model="map", key=key
         )
         features = jnp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 0])
         encoded = encoder.encode(features)
-        assert encoded.shape == (1000,), f"Encoded shape should match dimensions, got {encoded.shape}"
+        assert encoded.shape == (
+            1000,
+        ), f"Encoded shape should match dimensions, got {encoded.shape}"
 
         print_success("Encoder operations work")
 
         # Test classifier
-        classifier = CentroidClassifier.create(
-            num_classes=3,
-            dimensions=1000,
-            vsa_model='map'
-        )
+        classifier = CentroidClassifier.create(num_classes=3, dimensions=1000, vsa_model="map")
 
         # Create dummy training data
         train_hvs = model.random(key, (30, 1000))
@@ -294,6 +285,7 @@ def test_basic_functionality() -> bool:
     except Exception as e:
         print_error(f"Functionality test failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -304,8 +296,7 @@ def check_code_quality() -> bool:
 
     # Check black formatting
     success, output = run_command(
-        ["python", "-m", "black", "--check", "jax_hdc/"],
-        "black --check jax_hdc/"
+        ["python", "-m", "black", "--check", "jax_hdc/"], "black --check jax_hdc/"
     )
 
     if success:
