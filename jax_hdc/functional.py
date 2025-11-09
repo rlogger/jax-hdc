@@ -7,7 +7,7 @@ This module provides the fundamental operations for manipulating hypervectors:
 - Similarity: Measures relatedness between hypervectors
 """
 
-from typing import Optional, Union
+from typing import Optional, Union, Callable
 import jax
 import jax.numpy as jnp
 
@@ -45,8 +45,7 @@ def bind_bsc(x: jax.Array, y: jax.Array) -> jax.Array:
     return jnp.logical_xor(x, y)
 
 
-@jax.jit
-def bundle_bsc(vectors: jax.Array, axis: int = 0, keepdims: bool = False) -> jax.Array:
+def bundle_bsc(vectors: jax.Array, axis: int = 0) -> jax.Array:
     """Bundle hypervectors using majority rule for Binary Spatter Codes.
 
     Bundling creates a new hypervector similar to all inputs by taking
@@ -55,7 +54,6 @@ def bundle_bsc(vectors: jax.Array, axis: int = 0, keepdims: bool = False) -> jax
     Args:
         vectors: Binary hypervectors of shape with axis containing vectors to bundle
         axis: Axis along which to bundle (default: 0)
-        keepdims: Whether to keep the bundling axis (default: False)
 
     Returns:
         Bundled hypervector, similar to all inputs
@@ -72,8 +70,10 @@ def bundle_bsc(vectors: jax.Array, axis: int = 0, keepdims: bool = False) -> jax
         >>> bundle_bsc(vectors, axis=0)
         Array([True, True, True], dtype=bool)  # Majority at each position
     """
-    counts = jnp.sum(vectors, axis=axis, keepdims=keepdims)
-    threshold = vectors.shape[axis] / 2.0
+    counts = jnp.sum(vectors, axis=axis)
+    # Get shape along axis - use static axis value
+    shape_size = vectors.shape[axis]
+    threshold = shape_size / 2.0
     return counts > threshold
 
 
@@ -154,8 +154,7 @@ def bind_map(x: jax.Array, y: jax.Array) -> jax.Array:
     return x * y
 
 
-@jax.jit
-def bundle_map(vectors: jax.Array, axis: int = 0, keepdims: bool = False) -> jax.Array:
+def bundle_map(vectors: jax.Array, axis: int = 0) -> jax.Array:
     """Bundle hypervectors using normalized sum for MAP.
 
     For real-valued vectors, bundling is the normalized sum. The result
@@ -164,7 +163,6 @@ def bundle_map(vectors: jax.Array, axis: int = 0, keepdims: bool = False) -> jax
     Args:
         vectors: Real-valued hypervectors with axis containing vectors to bundle
         axis: Axis along which to bundle (default: 0)
-        keepdims: Whether to keep the bundling axis (default: False)
 
     Returns:
         Bundled and normalized hypervector
@@ -176,7 +174,7 @@ def bundle_map(vectors: jax.Array, axis: int = 0, keepdims: bool = False) -> jax
         >>> bundle_map(vectors, axis=0)
         Array([0.577, 0.577, 0.577], dtype=float32)  # Normalized average
     """
-    summed = jnp.sum(vectors, axis=axis, keepdims=keepdims)
+    summed = jnp.sum(vectors, axis=axis)
     norm = jnp.linalg.norm(summed, axis=-1, keepdims=True)
     return summed / (norm + 1e-8)
 
@@ -264,7 +262,7 @@ def permute(x: jax.Array, shifts: int = 1) -> jax.Array:
 def cleanup(
     query: jax.Array,
     memory: jax.Array,
-    similarity_fn: callable = cosine_similarity,
+    similarity_fn: Callable[[jax.Array, jax.Array], jax.Array] = cosine_similarity,
     return_similarity: bool = False
 ) -> Union[jax.Array, tuple[jax.Array, jax.Array]]:
     """Find the most similar vector in memory to the query.

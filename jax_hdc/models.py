@@ -4,8 +4,8 @@ This module provides various HDC learning algorithms including centroid-based
 classification, learning vector quantization, and gradient-based methods.
 """
 
-from dataclasses import dataclass, field
-from typing import Optional, Union, Callable
+from dataclasses import dataclass, field, replace as dataclass_replace
+from typing import Optional, Union, Callable, Any, List
 import jax
 import jax.numpy as jnp
 from jax_hdc import functional as F
@@ -179,31 +179,42 @@ class CentroidClassifier:
         Returns:
             Trained CentroidClassifier (new instance, immutable)
         """
-        # Compute centroid for each class
-        def compute_class_centroid(class_idx):
+        # Compute centroid for each class using where instead of boolean indexing
+        new_prototypes_list: List[jax.Array] = []
+
+        for class_idx in range(self.num_classes):
             # Get all hypervectors for this class
             class_mask = train_labels == class_idx
-            class_hvs = train_hvs[class_mask]
 
-            # Bundle them (or return random if no samples)
-            def bundle_class():
+            # Count samples in this class
+            num_samples = jnp.sum(class_mask)
+
+            if num_samples > 0:
+                # Use where to select class samples (more JIT-friendly)
+                # Create weights: 1.0 for class samples, 0.0 for others
+                weights = jnp.where(class_mask[:, None], 1.0, 0.0)
+
+                # Weighted sum of hypervectors
                 if self.vsa_model_name == "bsc":
-                    return F.bundle_bsc(class_hvs, axis=0)
+                    # For BSC, use weighted voting
+                    weighted_hvs = train_hvs.astype(jnp.float32) * weights
+                    summed = jnp.sum(weighted_hvs, axis=0)
+                    threshold = num_samples / 2.0
+                    centroid = summed > threshold
                 else:
-                    return F.bundle_map(class_hvs, axis=0)
+                    # For real-valued, use weighted average
+                    weighted_hvs = train_hvs * weights
+                    summed = jnp.sum(weighted_hvs, axis=0)
+                    # Normalize
+                    norm = jnp.linalg.norm(summed)
+                    centroid = summed / (norm + 1e-8)
 
-            def random_fallback():
-                return self.prototypes[class_idx]  # Keep initial random
+                new_prototypes_list.append(centroid)
+            else:
+                # Keep initial random prototype for empty classes
+                new_prototypes_list.append(self.prototypes[class_idx])
 
-            # Use conditional to handle empty classes
-            return jax.lax.cond(
-                jnp.sum(class_mask) > 0,
-                lambda _: bundle_class(),
-                lambda _: random_fallback(),
-                None
-            )
-
-        new_prototypes = jax.vmap(compute_class_centroid)(jnp.arange(self.num_classes))
+        new_prototypes: jax.Array = jnp.stack(new_prototypes_list)
 
         # Return new instance with updated prototypes
         return self.replace(prototypes=new_prototypes)
@@ -244,7 +255,7 @@ class CentroidClassifier:
         return self.replace(prototypes=new_prototypes)
 
     @jax.jit
-    def score(self, test_hvs: jax.Array, test_labels: jax.Array) -> float:
+    def score(self, test_hvs: jax.Array, test_labels: jax.Array) -> jax.Array:
         """Compute accuracy on test data.
 
         Args:
@@ -252,15 +263,14 @@ class CentroidClassifier:
             test_labels: True labels of shape (n_samples,)
 
         Returns:
-            Accuracy score in [0, 1]
+            Accuracy score in [0, 1] as a JAX scalar array
         """
         predictions = self.predict(test_hvs)
         return jnp.mean(predictions == test_labels)
 
-    def replace(self, **updates):
+    def replace(self, **updates: Any) -> "CentroidClassifier":
         """Create a new instance with updated fields (dataclass pattern)."""
-        from dataclasses import replace
-        return replace(self, **updates)
+        return dataclass_replace(self, **updates)
 
 
 @jax.tree_util.register_dataclass
@@ -371,17 +381,28 @@ class AdaptiveHDC:
         Returns:
             Trained classifier
         """
-        # Initialize with centroids
+        # Initialize with centroids using where instead of boolean indexing
         classifier = self
         for class_idx in range(self.num_classes):
             class_mask = train_labels == class_idx
-            class_hvs = train_hvs[class_mask]
+            num_samples = jnp.sum(class_mask)
 
-            if jnp.sum(class_mask) > 0:
+            if num_samples > 0:
+                # Use where to select class samples (more JIT-friendly)
+                weights = jnp.where(class_mask[:, None], 1.0, 0.0)
+
                 if self.vsa_model_name == "bsc":
-                    centroid = F.bundle_bsc(class_hvs, axis=0)
+                    # For BSC, use weighted voting
+                    weighted_hvs = train_hvs.astype(jnp.float32) * weights
+                    summed = jnp.sum(weighted_hvs, axis=0)
+                    threshold = num_samples / 2.0
+                    centroid = summed > threshold
                 else:
-                    centroid = F.bundle_map(class_hvs, axis=0)
+                    # For real-valued, use weighted average
+                    weighted_hvs = train_hvs * weights
+                    summed = jnp.sum(weighted_hvs, axis=0)
+                    norm = jnp.linalg.norm(summed)
+                    centroid = summed / (norm + 1e-8)
 
                 classifier = classifier.replace(
                     prototypes=classifier.prototypes.at[class_idx].set(centroid)
@@ -404,8 +425,8 @@ class AdaptiveHDC:
     def _update_prototypes(
         self,
         sample_hv: jax.Array,
-        true_label: int,
-        pred_label: int,
+        true_label: Union[int, jax.Array],
+        pred_label: Union[int, jax.Array],
         learning_rate: float
     ) -> "AdaptiveHDC":
         """Update prototypes based on misclassification."""
@@ -423,15 +444,14 @@ class AdaptiveHDC:
         return self.replace(prototypes=new_prototypes)
 
     @jax.jit
-    def score(self, test_hvs: jax.Array, test_labels: jax.Array) -> float:
-        """Compute accuracy."""
+    def score(self, test_hvs: jax.Array, test_labels: jax.Array) -> jax.Array:
+        """Compute accuracy as JAX scalar array."""
         predictions = self.predict(test_hvs)
         return jnp.mean(predictions == test_labels)
 
-    def replace(self, **updates):
+    def replace(self, **updates: Any) -> "AdaptiveHDC":
         """Create new instance with updates."""
-        from dataclasses import replace
-        return replace(self, **updates)
+        return dataclass_replace(self, **updates)
 
 
 __all__ = [

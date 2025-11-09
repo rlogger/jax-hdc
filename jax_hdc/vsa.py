@@ -83,7 +83,6 @@ class BSC(VSAModel):
         """Bind using XOR."""
         return F.bind_bsc(x, y)
 
-    @jax.jit
     def bundle(self, vectors: jax.Array, axis: int = 0) -> jax.Array:
         """Bundle using majority rule."""
         return F.bundle_bsc(vectors, axis=axis)
@@ -154,7 +153,6 @@ class MAP(VSAModel):
         """Bind using element-wise multiplication."""
         return F.bind_map(x, y)
 
-    @jax.jit
     def bundle(self, vectors: jax.Array, axis: int = 0) -> jax.Array:
         """Bundle using normalized sum."""
         return F.bundle_map(vectors, axis=axis)
@@ -230,7 +228,6 @@ class HRR(VSAModel):
         """Bind using circular convolution."""
         return F.bind_hrr(x, y)
 
-    @jax.jit
     def bundle(self, vectors: jax.Array, axis: int = 0) -> jax.Array:
         """Bundle using normalized sum."""
         return F.bundle_hrr(vectors, axis=axis)
@@ -302,7 +299,6 @@ class FHRR(VSAModel):
         """Bind using element-wise multiplication."""
         return x * y
 
-    @jax.jit
     def bundle(self, vectors: jax.Array, axis: int = 0) -> jax.Array:
         """Bundle using normalized sum."""
         summed = jnp.sum(vectors, axis=axis)
@@ -365,7 +361,7 @@ def create_vsa_model(model_type: str = "map", dimensions: int = 10000) -> VSAMod
             f"Available models: {list(models.keys())}"
         )
 
-    return models[model_type].create(dimensions=dimensions)
+    return models[model_type].create(dimensions=dimensions)  # type: ignore[attr-defined]
 
 
 __all__ = [

@@ -6,7 +6,7 @@ benchmarking, and other common operations.
 
 import os
 import time
-from typing import Optional, Union, List, Tuple
+from typing import Optional, Union, List, Tuple, Callable, Any, Dict
 import jax
 import jax.numpy as jnp
 
@@ -108,12 +108,12 @@ def set_random_seed(seed: int) -> jax.Array:
 
 
 def benchmark_function(
-    fn: callable,
-    *args,
+    fn: Callable[..., Any],
+    *args: Any,
     num_trials: int = 100,
     warmup: int = 10,
-    **kwargs
-) -> dict:
+    **kwargs: Any
+) -> Dict[str, Union[float, int]]:
     """Benchmark a JAX function.
 
     Properly handles JIT compilation and async dispatch for accurate timing.
@@ -142,15 +142,15 @@ def benchmark_function(
         jax.block_until_ready(result)
 
     # Benchmark
-    times = []
+    times_list: List[float] = []
     for _ in range(num_trials):
         start = time.time()
         result = fn(*args, **kwargs)
         jax.block_until_ready(result)  # Wait for async dispatch
         end = time.time()
-        times.append((end - start) * 1000)  # Convert to ms
+        times_list.append((end - start) * 1000)  # Convert to ms
 
-    times = jnp.array(times)
+    times = jnp.array(times_list)
 
     return {
         'mean_ms': float(jnp.mean(times)),
@@ -225,7 +225,7 @@ def normalize(x: jax.Array, axis: int = -1, eps: float = 1e-8) -> jax.Array:
     return x / (norm + eps)
 
 
-def print_model_info(model) -> None:
+def print_model_info(model: Any) -> None:
     """Print information about a VSA model or encoder.
 
     Args:
@@ -250,7 +250,7 @@ def print_model_info(model) -> None:
                 print(f"  {field_name}: {value}")
 
 
-def count_parameters(model) -> int:
+def count_parameters(model: Any) -> int:
     """Count total number of parameters in a model.
 
     Args:
@@ -276,7 +276,7 @@ def count_parameters(model) -> int:
     return total
 
 
-def to_device(data: Union[jax.Array, Tuple, List], device: jax.Device) -> Union[jax.Array, Tuple, List]:
+def to_device(data: Union[jax.Array, Tuple[Any, ...], List[Any]], device: jax.Device) -> Union[jax.Array, Tuple[Any, ...], List[Any]]:
     """Move data to a specific device.
 
     Args:
@@ -294,9 +294,9 @@ def to_device(data: Union[jax.Array, Tuple, List], device: jax.Device) -> Union[
     if isinstance(data, jax.Array):
         return jax.device_put(data, device)
     elif isinstance(data, (tuple, list)):
-        return type(data)(jax.device_put(item, device) for item in data)
-    else:
-        return data
+        result: Union[Tuple[Any, ...], List[Any]] = type(data)(jax.device_put(item, device) for item in data)
+        return result
+    return data
 
 
 def check_nan_inf(x: jax.Array, name: str = "array") -> None:
