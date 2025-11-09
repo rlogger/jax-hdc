@@ -66,8 +66,6 @@ class BSC(VSAModel):
         >>> print(f"Similarity: {sim:.3f}")  # Should be ~0.5 (random)
     """
 
-    name: str = field(default="bsc", metadata=dict(static=True))
-
     @staticmethod
     def create(dimensions: int = 10000) -> "BSC":
         """Create a BSC model.
@@ -138,8 +136,6 @@ class MAP(VSAModel):
         >>> sim = model.similarity(bound, x)
         >>> print(f"Similarity: {sim:.3f}")  # Should be ~0.0 (orthogonal)
     """
-
-    name: str = field(default="map", metadata=dict(static=True))
 
     @staticmethod
     def create(dimensions: int = 10000) -> "MAP":
@@ -217,8 +213,6 @@ class HRR(VSAModel):
         >>> print(f"Similarity: {sim:.3f}")  # Should be high
     """
 
-    name: str = field(default="hrr", metadata=dict(static=True))
-
     @staticmethod
     def create(dimensions: int = 10000) -> "HRR":
         """Create an HRR model.
@@ -290,8 +284,6 @@ class FHRR(VSAModel):
         >>> y = model.random(key, (10000,))
         >>> bound = model.bind(x, y)
     """
-
-    name: str = field(default="fhrr", metadata=dict(static=True))
 
     @staticmethod
     def create(dimensions: int = 10000) -> "FHRR":
