@@ -1,0 +1,410 @@
+"""Tests for embedding encoders."""
+
+import jax
+import jax.numpy as jnp
+import pytest
+from jax_hdc.embeddings import RandomEncoder, LevelEncoder, ProjectionEncoder
+
+
+class TestRandomEncoder:
+    """Tests for RandomEncoder."""
+
+    def test_creation_with_defaults(self):
+        """Test RandomEncoder creation with default parameters."""
+        encoder = RandomEncoder.create(
+            num_features=5,
+            num_values=10,
+            dimensions=100,
+            key=jax.random.PRNGKey(42)
+        )
+
+        assert encoder.num_features == 5
+        assert encoder.num_values == 10
+        assert encoder.dimensions == 100
+        assert encoder.vsa_model_name == "map"
+        assert encoder.codebook.shape == (5, 10, 100)
+
+    def test_creation_with_bsc(self):
+        """Test RandomEncoder creation with BSC model."""
+        encoder = RandomEncoder.create(
+            num_features=3,
+            num_values=5,
+            dimensions=50,
+            vsa_model="bsc",
+            key=jax.random.PRNGKey(42)
+        )
+
+        assert encoder.vsa_model_name == "bsc"
+        assert encoder.codebook.dtype == jnp.bool_
+
+    def test_creation_with_map(self):
+        """Test RandomEncoder creation with MAP model."""
+        encoder = RandomEncoder.create(
+            num_features=3,
+            num_values=5,
+            dimensions=50,
+            vsa_model="map",
+            key=jax.random.PRNGKey(42)
+        )
+
+        assert encoder.vsa_model_name == "map"
+        assert encoder.codebook.dtype == jnp.float32
+
+    def test_encode_single_sample(self):
+        """Test encoding a single sample."""
+        encoder = RandomEncoder.create(
+            num_features=3,
+            num_values=5,
+            dimensions=100,
+            key=jax.random.PRNGKey(42)
+        )
+
+        indices = jnp.array([0, 2, 4])
+        encoded = encoder.encode(indices)
+
+        assert encoded.shape == (100,)
+        assert jnp.isfinite(encoded).all()
+
+    def test_encode_batch(self):
+        """Test encoding a batch of samples."""
+        encoder = RandomEncoder.create(
+            num_features=3,
+            num_values=5,
+            dimensions=100,
+            key=jax.random.PRNGKey(42)
+        )
+
+        batch = jnp.array([
+            [0, 2, 4],
+            [1, 3, 2],
+            [4, 1, 0]
+        ])
+        encoded = encoder.encode_batch(batch)
+
+        assert encoded.shape == (3, 100)
+        assert jnp.isfinite(encoded).all()
+
+    def test_different_indices_produce_different_encodings(self):
+        """Test that different feature indices produce different encodings."""
+        encoder = RandomEncoder.create(
+            num_features=3,
+            num_values=5,
+            dimensions=1000,
+            key=jax.random.PRNGKey(42)
+        )
+
+        indices1 = jnp.array([0, 0, 0])
+        indices2 = jnp.array([1, 1, 1])
+
+        encoded1 = encoder.encode(indices1)
+        encoded2 = encoder.encode(indices2)
+
+        # Encoded vectors should be different
+        similarity = jnp.dot(encoded1, encoded2) / (
+            jnp.linalg.norm(encoded1) * jnp.linalg.norm(encoded2)
+        )
+        assert similarity < 0.5
+
+    def test_encode_reproducibility(self):
+        """Test that encoding is reproducible with same encoder."""
+        encoder = RandomEncoder.create(
+            num_features=3,
+            num_values=5,
+            dimensions=100,
+            key=jax.random.PRNGKey(42)
+        )
+
+        indices = jnp.array([1, 2, 3])
+        encoded1 = encoder.encode(indices)
+        encoded2 = encoder.encode(indices)
+
+        assert jnp.allclose(encoded1, encoded2)
+
+
+class TestLevelEncoder:
+    """Tests for LevelEncoder."""
+
+    def test_creation_with_defaults(self):
+        """Test LevelEncoder creation with default parameters."""
+        encoder = LevelEncoder.create(
+            num_levels=50,
+            dimensions=100,
+            key=jax.random.PRNGKey(42)
+        )
+
+        assert encoder.num_levels == 50
+        assert encoder.dimensions == 100
+        assert encoder.min_value == 0.0
+        assert encoder.max_value == 1.0
+        assert encoder.vsa_model_name == "map"
+        assert encoder.encoding_type == "linear"
+        assert encoder.level_hvs.shape == (50, 100)
+
+    def test_creation_with_custom_range(self):
+        """Test LevelEncoder with custom value range."""
+        encoder = LevelEncoder.create(
+            num_levels=100,
+            dimensions=100,
+            min_value=-10.0,
+            max_value=10.0,
+            key=jax.random.PRNGKey(42)
+        )
+
+        assert encoder.min_value == -10.0
+        assert encoder.max_value == 10.0
+
+    def test_encode_scalar(self):
+        """Test encoding a scalar value."""
+        encoder = LevelEncoder.create(
+            num_levels=100,
+            dimensions=100,
+            min_value=0.0,
+            max_value=1.0,
+            key=jax.random.PRNGKey(42)
+        )
+
+        value = 0.5
+        encoded = encoder.encode(value)
+
+        assert encoded.shape == (100,)
+        assert jnp.isfinite(encoded).all()
+
+    def test_encode_batch(self):
+        """Test encoding a batch of values."""
+        encoder = LevelEncoder.create(
+            num_levels=100,
+            dimensions=100,
+            key=jax.random.PRNGKey(42)
+        )
+
+        values = jnp.array([0.1, 0.5, 0.9])
+        encoded = encoder.encode_batch(values)
+
+        assert encoded.shape == (3, 100)
+        assert jnp.isfinite(encoded).all()
+
+    def test_similar_values_produce_similar_encodings(self):
+        """Test that similar values produce similar encodings."""
+        encoder = LevelEncoder.create(
+            num_levels=100,
+            dimensions=1000,
+            key=jax.random.PRNGKey(42)
+        )
+
+        value1 = 0.5
+        value2 = 0.51
+        value3 = 0.9
+
+        encoded1 = encoder.encode(value1)
+        encoded2 = encoder.encode(value2)
+        encoded3 = encoder.encode(value3)
+
+        # Similar values should have high similarity
+        sim_12 = jnp.dot(encoded1, encoded2)
+        sim_13 = jnp.dot(encoded1, encoded3)
+
+        assert sim_12 > sim_13
+
+    def test_value_clamping(self):
+        """Test that values outside range are clamped."""
+        encoder = LevelEncoder.create(
+            num_levels=100,
+            dimensions=100,
+            min_value=0.0,
+            max_value=1.0,
+            key=jax.random.PRNGKey(42)
+        )
+
+        # Test values outside range
+        encoded_below = encoder.encode(-0.5)
+        encoded_above = encoder.encode(1.5)
+
+        # Should clamp to min and max
+        encoded_min = encoder.encode(0.0)
+        encoded_max = encoder.encode(1.0)
+
+        assert jnp.allclose(encoded_below, encoded_min)
+        assert jnp.allclose(encoded_above, encoded_max)
+
+    def test_encode_with_bsc(self):
+        """Test LevelEncoder with BSC model."""
+        encoder = LevelEncoder.create(
+            num_levels=50,
+            dimensions=100,
+            vsa_model="bsc",
+            key=jax.random.PRNGKey(42)
+        )
+
+        value = 0.7
+        encoded = encoder.encode(value)
+
+        assert encoder.vsa_model_name == "bsc"
+        assert encoded.shape == (100,)
+        # BSC output should be boolean
+        assert encoded.dtype == jnp.bool_
+
+    def test_encode_with_map(self):
+        """Test LevelEncoder with MAP model."""
+        encoder = LevelEncoder.create(
+            num_levels=50,
+            dimensions=100,
+            vsa_model="map",
+            key=jax.random.PRNGKey(42)
+        )
+
+        value = 0.7
+        encoded = encoder.encode(value)
+
+        assert encoder.vsa_model_name == "map"
+        assert encoded.dtype == jnp.float32
+        # Should be normalized
+        norm = jnp.linalg.norm(encoded)
+        assert jnp.allclose(norm, 1.0, atol=1e-5)
+
+    def test_encoding_reproducibility(self):
+        """Test that encoding is reproducible."""
+        encoder = LevelEncoder.create(
+            num_levels=100,
+            dimensions=100,
+            key=jax.random.PRNGKey(42)
+        )
+
+        value = 0.75
+        encoded1 = encoder.encode(value)
+        encoded2 = encoder.encode(value)
+
+        assert jnp.allclose(encoded1, encoded2)
+
+
+class TestProjectionEncoder:
+    """Tests for ProjectionEncoder."""
+
+    def test_creation_with_defaults(self):
+        """Test ProjectionEncoder creation with default parameters."""
+        encoder = ProjectionEncoder.create(
+            input_dim=50,
+            dimensions=100,
+            key=jax.random.PRNGKey(42)
+        )
+
+        assert encoder.input_dim == 50
+        assert encoder.dimensions == 100
+        assert encoder.vsa_model_name == "map"
+        assert encoder.projection_matrix.shape == (50, 100)
+
+    def test_creation_with_bsc(self):
+        """Test ProjectionEncoder with BSC model."""
+        encoder = ProjectionEncoder.create(
+            input_dim=50,
+            dimensions=100,
+            vsa_model="bsc",
+            key=jax.random.PRNGKey(42)
+        )
+
+        assert encoder.vsa_model_name == "bsc"
+
+    def test_encode_single_input(self):
+        """Test encoding a single input."""
+        encoder = ProjectionEncoder.create(
+            input_dim=50,
+            dimensions=100,
+            key=jax.random.PRNGKey(42)
+        )
+
+        x = jax.random.normal(jax.random.PRNGKey(0), (50,))
+        encoded = encoder.encode(x)
+
+        assert encoded.shape == (100,)
+        assert jnp.isfinite(encoded).all()
+
+    def test_encode_batch(self):
+        """Test encoding a batch of inputs."""
+        encoder = ProjectionEncoder.create(
+            input_dim=50,
+            dimensions=100,
+            key=jax.random.PRNGKey(42)
+        )
+
+        batch = jax.random.normal(jax.random.PRNGKey(0), (10, 50))
+        encoded = encoder.encode_batch(batch)
+
+        assert encoded.shape == (10, 100)
+        assert jnp.isfinite(encoded).all()
+
+    def test_encode_with_map_produces_normalized_output(self):
+        """Test that MAP encoding produces normalized output."""
+        encoder = ProjectionEncoder.create(
+            input_dim=50,
+            dimensions=100,
+            vsa_model="map",
+            key=jax.random.PRNGKey(42)
+        )
+
+        x = jax.random.normal(jax.random.PRNGKey(0), (50,))
+        encoded = encoder.encode(x)
+
+        norm = jnp.linalg.norm(encoded)
+        assert jnp.allclose(norm, 1.0, atol=1e-5)
+
+    def test_encode_with_bsc_produces_binary_output(self):
+        """Test that BSC encoding produces binary output."""
+        encoder = ProjectionEncoder.create(
+            input_dim=50,
+            dimensions=100,
+            vsa_model="bsc",
+            key=jax.random.PRNGKey(42)
+        )
+
+        x = jax.random.normal(jax.random.PRNGKey(0), (50,))
+        encoded = encoder.encode(x)
+
+        assert encoded.dtype == jnp.bool_
+
+    def test_similar_inputs_produce_similar_encodings(self):
+        """Test that similar inputs produce similar encodings."""
+        encoder = ProjectionEncoder.create(
+            input_dim=50,
+            dimensions=1000,
+            key=jax.random.PRNGKey(42)
+        )
+
+        x1 = jax.random.normal(jax.random.PRNGKey(0), (50,))
+        x2 = x1 + 0.01 * jax.random.normal(jax.random.PRNGKey(1), (50,))
+        x3 = jax.random.normal(jax.random.PRNGKey(2), (50,))
+
+        encoded1 = encoder.encode(x1)
+        encoded2 = encoder.encode(x2)
+        encoded3 = encoder.encode(x3)
+
+        sim_12 = jnp.dot(encoded1, encoded2)
+        sim_13 = jnp.dot(encoded1, encoded3)
+
+        # Similar inputs should have higher similarity
+        assert sim_12 > sim_13
+
+    def test_encoding_reproducibility(self):
+        """Test that encoding is reproducible."""
+        encoder = ProjectionEncoder.create(
+            input_dim=50,
+            dimensions=100,
+            key=jax.random.PRNGKey(42)
+        )
+
+        x = jax.random.normal(jax.random.PRNGKey(0), (50,))
+        encoded1 = encoder.encode(x)
+        encoded2 = encoder.encode(x)
+
+        assert jnp.allclose(encoded1, encoded2)
+
+    def test_projection_matrix_normalization(self):
+        """Test that projection matrix is properly normalized."""
+        encoder = ProjectionEncoder.create(
+            input_dim=50,
+            dimensions=100,
+            key=jax.random.PRNGKey(42)
+        )
+
+        # Check that columns have approximately equal variance
+        col_norms = jnp.linalg.norm(encoder.projection_matrix, axis=0)
+        # All column norms should be similar due to normalization
+        assert jnp.std(col_norms) < 0.5

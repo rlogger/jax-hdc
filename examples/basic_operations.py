@@ -20,19 +20,7 @@ import time
 import jax
 import jax.numpy as jnp
 from jax_hdc import MAP, BSC
-
-
-def normalize(vector):
-    """Normalize a hypervector to unit length.
-
-    Args:
-        vector: Input hypervector
-
-    Returns:
-        Normalized hypervector with unit L2 norm
-    """
-    norm = jnp.linalg.norm(vector)
-    return vector / norm if norm > 0 else vector
+from jax_hdc.utils import normalize
 
 
 def demo_binding_and_unbinding():

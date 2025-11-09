@@ -82,7 +82,10 @@ def get_device_memory_stats(device: Optional[jax.Device] = None) -> dict:
         device = jax.devices()[0]
 
     try:
-        return device.memory_stats()
+        stats = device.memory_stats()
+        if stats is None:
+            return {"error": "Memory stats not available for this device"}
+        return stats
     except AttributeError:
         return {"error": "Memory stats not available for this device"}
 

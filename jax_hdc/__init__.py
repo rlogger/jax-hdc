@@ -4,7 +4,7 @@ This library provides efficient implementations of Hyperdimensional Computing (H
 and Vector Symbolic Architectures (VSA) using JAX for hardware acceleration.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.0-alpha"
 
 from jax_hdc import functional
 from jax_hdc import vsa
