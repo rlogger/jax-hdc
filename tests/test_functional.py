@@ -1,8 +1,9 @@
 """Tests for functional operations."""
 
-import pytest
 import jax
 import jax.numpy as jnp
+import pytest
+
 from jax_hdc import functional as F
 
 

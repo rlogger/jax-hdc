@@ -6,8 +6,10 @@ of data (discrete features, continuous values, images) into hypervectors.
 
 from dataclasses import dataclass, field
 from typing import Optional, Union
+
 import jax
 import jax.numpy as jnp
+
 from jax_hdc import functional as F
 from jax_hdc.vsa import VSAModel, create_vsa_model
 

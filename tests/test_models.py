@@ -3,8 +3,9 @@
 import jax
 import jax.numpy as jnp
 import pytest
-from jax_hdc.models import CentroidClassifier, AdaptiveHDC
-from jax_hdc.vsa import MAP, BSC
+
+from jax_hdc.models import AdaptiveHDC, CentroidClassifier
+from jax_hdc.vsa import BSC, MAP
 
 
 class TestCentroidClassifier:

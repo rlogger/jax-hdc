@@ -5,9 +5,11 @@ bundling, and similarity operations. All models follow a consistent API.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Callable
+from typing import Callable, Optional
+
 import jax
 import jax.numpy as jnp
+
 from jax_hdc import functional as F
 
 # JAX compatibility: register_dataclass behavior changed across versions
@@ -344,8 +346,8 @@ class FHRR(VSAModel):
         """Compute cosine similarity of complex vectors."""
         x_norm = x / (jnp.linalg.norm(x, axis=-1, keepdims=True) + 1e-8)
         y_norm = y / (jnp.linalg.norm(y, axis=-1, keepdims=True) + 1e-8)
-        # Use real part of inner product
-        return jnp.real(jnp.sum(x_norm * jnp.conj(y_norm), axis=-1))
+        # Use real part of inner product, clip to handle floating point precision
+        return jnp.clip(jnp.real(jnp.sum(x_norm * jnp.conj(y_norm), axis=-1)), -1.0, 1.0)
 
     def random(self, key: jax.Array, shape: tuple) -> jax.Array:
         """Generate random complex hypervectors on unit circle.

@@ -14,8 +14,10 @@ This demonstrates HDC's core strengths:
 """
 
 import time
+
 import jax
 import jax.numpy as jnp
+
 from jax_hdc import MAP
 from jax_hdc.embeddings import RandomEncoder
 from jax_hdc.models import CentroidClassifier

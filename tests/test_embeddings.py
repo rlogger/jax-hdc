@@ -3,7 +3,8 @@
 import jax
 import jax.numpy as jnp
 import pytest
-from jax_hdc.embeddings import RandomEncoder, LevelEncoder, ProjectionEncoder
+
+from jax_hdc.embeddings import LevelEncoder, ProjectionEncoder, RandomEncoder
 
 
 class TestRandomEncoder:
