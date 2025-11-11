@@ -124,11 +124,9 @@ def main():
     usd_of_mex = model.bind(us_to_mx, usd)
 
     # Create memory of all known concepts
-    memory = jnp.concatenate([
-        keys,      # Role vectors
-        us_values, # US fillers
-        mx_values  # Mexico fillers
-    ], axis=0)
+    memory = jnp.concatenate(
+        [keys, us_values, mx_values], axis=0  # Role vectors  # US fillers  # Mexico fillers
+    )
 
     memory_labels = [
         "country (role)",
@@ -139,7 +137,7 @@ def main():
         "US Dollar",
         "Mexico",
         "Mexico City",
-        "Mexican Peso"
+        "Mexican Peso",
     ]
 
     # Find most similar concept

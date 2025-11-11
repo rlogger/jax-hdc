@@ -6,15 +6,13 @@ benchmarking, and other common operations.
 
 import os
 import time
-from typing import Optional, Union, List, Tuple
+from typing import Optional, Union, List, Tuple, Callable, Any, Dict
 import jax
 import jax.numpy as jnp
 
 
 def configure_memory(
-    preallocate: bool = False,
-    memory_fraction: float = 0.8,
-    device: str = "gpu"
+    preallocate: bool = False, memory_fraction: float = 0.8, device: str = "gpu"
 ) -> None:
     """Configure JAX memory allocation settings.
 
@@ -29,12 +27,12 @@ def configure_memory(
         >>> # Use 90% of GPU memory with flexible allocation
         >>> configure_memory(preallocate=False, memory_fraction=0.9)
     """
-    os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = str(preallocate).lower()
-    os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = str(memory_fraction)
+    os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = str(preallocate).lower()
+    os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = str(memory_fraction)
 
     if device.lower() == "gpu":
         # Enable Triton GEMM for better performance (optional)
-        os.environ['XLA_FLAGS'] = '--xla_gpu_enable_triton_gemm=true'
+        os.environ["XLA_FLAGS"] = "--xla_gpu_enable_triton_gemm=true"
 
 
 def get_device(device_type: str = "gpu", device_id: int = 0) -> jax.Device:
@@ -62,7 +60,7 @@ def get_device(device_type: str = "gpu", device_id: int = 0) -> jax.Device:
     except RuntimeError:
         # Fallback to CPU if requested device type not available
         print(f"Warning: {device_type} not available, falling back to CPU")
-        return jax.devices('cpu')[0]
+        return jax.devices("cpu")[0]
 
 
 def get_device_memory_stats(device: Optional[jax.Device] = None) -> dict:
@@ -108,12 +106,8 @@ def set_random_seed(seed: int) -> jax.Array:
 
 
 def benchmark_function(
-    fn: callable,
-    *args,
-    num_trials: int = 100,
-    warmup: int = 10,
-    **kwargs
-) -> dict:
+    fn: Callable[..., Any], *args: Any, num_trials: int = 100, warmup: int = 10, **kwargs: Any
+) -> Dict[str, Union[float, int]]:
     """Benchmark a JAX function.
 
     Properly handles JIT compilation and async dispatch for accurate timing.
@@ -142,23 +136,23 @@ def benchmark_function(
         jax.block_until_ready(result)
 
     # Benchmark
-    times = []
+    times_list: List[float] = []
     for _ in range(num_trials):
         start = time.time()
         result = fn(*args, **kwargs)
         jax.block_until_ready(result)  # Wait for async dispatch
         end = time.time()
-        times.append((end - start) * 1000)  # Convert to ms
+        times_list.append((end - start) * 1000)  # Convert to ms
 
-    times = jnp.array(times)
+    times = jnp.array(times_list)
 
     return {
-        'mean_ms': float(jnp.mean(times)),
-        'std_ms': float(jnp.std(times)),
-        'min_ms': float(jnp.min(times)),
-        'max_ms': float(jnp.max(times)),
-        'median_ms': float(jnp.median(times)),
-        'num_trials': num_trials
+        "mean_ms": float(jnp.mean(times)),
+        "std_ms": float(jnp.std(times)),
+        "min_ms": float(jnp.min(times)),
+        "max_ms": float(jnp.max(times)),
+        "median_ms": float(jnp.median(times)),
+        "num_trials": num_trials,
     }
 
 
@@ -189,17 +183,14 @@ def check_shapes(*arrays: jax.Array, expected_ndim: Optional[int] = None) -> Non
     if expected_ndim is not None:
         for i, ndim in enumerate(ndims):
             if ndim != expected_ndim:
-                raise ValueError(
-                    f"Array {i} has {ndim} dimensions, expected {expected_ndim}"
-                )
+                raise ValueError(f"Array {i} has {ndim} dimensions, expected {expected_ndim}")
 
     # Check shapes are compatible
     first_shape = shapes[0]
     for i, shape in enumerate(shapes[1:], 1):
         if shape != first_shape:
             raise ValueError(
-                f"Shape mismatch: array 0 has shape {first_shape}, "
-                f"array {i} has shape {shape}"
+                f"Shape mismatch: array 0 has shape {first_shape}, " f"array {i} has shape {shape}"
             )
 
 
@@ -225,7 +216,7 @@ def normalize(x: jax.Array, axis: int = -1, eps: float = 1e-8) -> jax.Array:
     return x / (norm + eps)
 
 
-def print_model_info(model) -> None:
+def print_model_info(model: Any) -> None:
     """Print information about a VSA model or encoder.
 
     Args:
@@ -239,7 +230,7 @@ def print_model_info(model) -> None:
     print(f"Model: {model.__class__.__name__}")
 
     # Print all fields
-    if hasattr(model, '__dataclass_fields__'):
+    if hasattr(model, "__dataclass_fields__"):
         for field_name in model.__dataclass_fields__:
             value = getattr(model, field_name)
 
@@ -250,7 +241,7 @@ def print_model_info(model) -> None:
                 print(f"  {field_name}: {value}")
 
 
-def count_parameters(model) -> int:
+def count_parameters(model: Any) -> int:
     """Count total number of parameters in a model.
 
     Args:
@@ -267,7 +258,7 @@ def count_parameters(model) -> int:
     """
     total = 0
 
-    if hasattr(model, '__dataclass_fields__'):
+    if hasattr(model, "__dataclass_fields__"):
         for field_name in model.__dataclass_fields__:
             value = getattr(model, field_name)
             if isinstance(value, jax.Array):
@@ -276,7 +267,9 @@ def count_parameters(model) -> int:
     return total
 
 
-def to_device(data: Union[jax.Array, Tuple, List], device: jax.Device) -> Union[jax.Array, Tuple, List]:
+def to_device(
+    data: Union[jax.Array, Tuple[Any, ...], List[Any]], device: jax.Device
+) -> Union[jax.Array, Tuple[Any, ...], List[Any]]:
     """Move data to a specific device.
 
     Args:
@@ -294,9 +287,11 @@ def to_device(data: Union[jax.Array, Tuple, List], device: jax.Device) -> Union[
     if isinstance(data, jax.Array):
         return jax.device_put(data, device)
     elif isinstance(data, (tuple, list)):
-        return type(data)(jax.device_put(item, device) for item in data)
-    else:
-        return data
+        result: Union[Tuple[Any, ...], List[Any]] = type(data)(
+            jax.device_put(item, device) for item in data
+        )
+        return result
+    return data
 
 
 def check_nan_inf(x: jax.Array, name: str = "array") -> None:
@@ -335,21 +330,23 @@ def get_version_info() -> dict:
     import jax_hdc
 
     info = {
-        'jax_hdc': jax_hdc.__version__,
-        'jax': jax.__version__,
+        "jax_hdc": jax_hdc.__version__,
+        "jax": jax.__version__,
     }
 
     try:
         import jaxlib
-        info['jaxlib'] = jaxlib.__version__
+
+        info["jaxlib"] = jaxlib.__version__
     except ImportError:
-        info['jaxlib'] = 'not installed'
+        info["jaxlib"] = "not installed"
 
     try:
         import optax
-        info['optax'] = optax.__version__
+
+        info["optax"] = optax.__version__
     except ImportError:
-        info['optax'] = 'not installed'
+        info["optax"] = "not installed"
 
     return info
 

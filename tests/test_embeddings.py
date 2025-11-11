@@ -12,10 +12,7 @@ class TestRandomEncoder:
     def test_creation_with_defaults(self):
         """Test RandomEncoder creation with default parameters."""
         encoder = RandomEncoder.create(
-            num_features=5,
-            num_values=10,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
+            num_features=5, num_values=10, dimensions=100, key=jax.random.PRNGKey(42)
         )
 
         assert encoder.num_features == 5
@@ -27,11 +24,7 @@ class TestRandomEncoder:
     def test_creation_with_bsc(self):
         """Test RandomEncoder creation with BSC model."""
         encoder = RandomEncoder.create(
-            num_features=3,
-            num_values=5,
-            dimensions=50,
-            vsa_model="bsc",
-            key=jax.random.PRNGKey(42)
+            num_features=3, num_values=5, dimensions=50, vsa_model="bsc", key=jax.random.PRNGKey(42)
         )
 
         assert encoder.vsa_model_name == "bsc"
@@ -40,11 +33,7 @@ class TestRandomEncoder:
     def test_creation_with_map(self):
         """Test RandomEncoder creation with MAP model."""
         encoder = RandomEncoder.create(
-            num_features=3,
-            num_values=5,
-            dimensions=50,
-            vsa_model="map",
-            key=jax.random.PRNGKey(42)
+            num_features=3, num_values=5, dimensions=50, vsa_model="map", key=jax.random.PRNGKey(42)
         )
 
         assert encoder.vsa_model_name == "map"
@@ -53,10 +42,7 @@ class TestRandomEncoder:
     def test_encode_single_sample(self):
         """Test encoding a single sample."""
         encoder = RandomEncoder.create(
-            num_features=3,
-            num_values=5,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
+            num_features=3, num_values=5, dimensions=100, key=jax.random.PRNGKey(42)
         )
 
         indices = jnp.array([0, 2, 4])
@@ -68,17 +54,10 @@ class TestRandomEncoder:
     def test_encode_batch(self):
         """Test encoding a batch of samples."""
         encoder = RandomEncoder.create(
-            num_features=3,
-            num_values=5,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
+            num_features=3, num_values=5, dimensions=100, key=jax.random.PRNGKey(42)
         )
 
-        batch = jnp.array([
-            [0, 2, 4],
-            [1, 3, 2],
-            [4, 1, 0]
-        ])
+        batch = jnp.array([[0, 2, 4], [1, 3, 2], [4, 1, 0]])
         encoded = encoder.encode_batch(batch)
 
         assert encoded.shape == (3, 100)
@@ -87,10 +66,7 @@ class TestRandomEncoder:
     def test_different_indices_produce_different_encodings(self):
         """Test that different feature indices produce different encodings."""
         encoder = RandomEncoder.create(
-            num_features=3,
-            num_values=5,
-            dimensions=1000,
-            key=jax.random.PRNGKey(42)
+            num_features=3, num_values=5, dimensions=1000, key=jax.random.PRNGKey(42)
         )
 
         indices1 = jnp.array([0, 0, 0])
@@ -108,10 +84,7 @@ class TestRandomEncoder:
     def test_encode_reproducibility(self):
         """Test that encoding is reproducible with same encoder."""
         encoder = RandomEncoder.create(
-            num_features=3,
-            num_values=5,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
+            num_features=3, num_values=5, dimensions=100, key=jax.random.PRNGKey(42)
         )
 
         indices = jnp.array([1, 2, 3])
@@ -126,11 +99,7 @@ class TestLevelEncoder:
 
     def test_creation_with_defaults(self):
         """Test LevelEncoder creation with default parameters."""
-        encoder = LevelEncoder.create(
-            num_levels=50,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
-        )
+        encoder = LevelEncoder.create(num_levels=50, dimensions=100, key=jax.random.PRNGKey(42))
 
         assert encoder.num_levels == 50
         assert encoder.dimensions == 100
@@ -147,7 +116,7 @@ class TestLevelEncoder:
             dimensions=100,
             min_value=-10.0,
             max_value=10.0,
-            key=jax.random.PRNGKey(42)
+            key=jax.random.PRNGKey(42),
         )
 
         assert encoder.min_value == -10.0
@@ -156,11 +125,7 @@ class TestLevelEncoder:
     def test_encode_scalar(self):
         """Test encoding a scalar value."""
         encoder = LevelEncoder.create(
-            num_levels=100,
-            dimensions=100,
-            min_value=0.0,
-            max_value=1.0,
-            key=jax.random.PRNGKey(42)
+            num_levels=100, dimensions=100, min_value=0.0, max_value=1.0, key=jax.random.PRNGKey(42)
         )
 
         value = 0.5
@@ -171,11 +136,7 @@ class TestLevelEncoder:
 
     def test_encode_batch(self):
         """Test encoding a batch of values."""
-        encoder = LevelEncoder.create(
-            num_levels=100,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
-        )
+        encoder = LevelEncoder.create(num_levels=100, dimensions=100, key=jax.random.PRNGKey(42))
 
         values = jnp.array([0.1, 0.5, 0.9])
         encoded = encoder.encode_batch(values)
@@ -185,11 +146,7 @@ class TestLevelEncoder:
 
     def test_similar_values_produce_similar_encodings(self):
         """Test that similar values produce similar encodings."""
-        encoder = LevelEncoder.create(
-            num_levels=100,
-            dimensions=1000,
-            key=jax.random.PRNGKey(42)
-        )
+        encoder = LevelEncoder.create(num_levels=100, dimensions=1000, key=jax.random.PRNGKey(42))
 
         value1 = 0.5
         value2 = 0.51
@@ -208,11 +165,7 @@ class TestLevelEncoder:
     def test_value_clamping(self):
         """Test that values outside range are clamped."""
         encoder = LevelEncoder.create(
-            num_levels=100,
-            dimensions=100,
-            min_value=0.0,
-            max_value=1.0,
-            key=jax.random.PRNGKey(42)
+            num_levels=100, dimensions=100, min_value=0.0, max_value=1.0, key=jax.random.PRNGKey(42)
         )
 
         # Test values outside range
@@ -229,10 +182,7 @@ class TestLevelEncoder:
     def test_encode_with_bsc(self):
         """Test LevelEncoder with BSC model."""
         encoder = LevelEncoder.create(
-            num_levels=50,
-            dimensions=100,
-            vsa_model="bsc",
-            key=jax.random.PRNGKey(42)
+            num_levels=50, dimensions=100, vsa_model="bsc", key=jax.random.PRNGKey(42)
         )
 
         value = 0.7
@@ -246,10 +196,7 @@ class TestLevelEncoder:
     def test_encode_with_map(self):
         """Test LevelEncoder with MAP model."""
         encoder = LevelEncoder.create(
-            num_levels=50,
-            dimensions=100,
-            vsa_model="map",
-            key=jax.random.PRNGKey(42)
+            num_levels=50, dimensions=100, vsa_model="map", key=jax.random.PRNGKey(42)
         )
 
         value = 0.7
@@ -263,11 +210,7 @@ class TestLevelEncoder:
 
     def test_encoding_reproducibility(self):
         """Test that encoding is reproducible."""
-        encoder = LevelEncoder.create(
-            num_levels=100,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
-        )
+        encoder = LevelEncoder.create(num_levels=100, dimensions=100, key=jax.random.PRNGKey(42))
 
         value = 0.75
         encoded1 = encoder.encode(value)
@@ -281,11 +224,7 @@ class TestProjectionEncoder:
 
     def test_creation_with_defaults(self):
         """Test ProjectionEncoder creation with default parameters."""
-        encoder = ProjectionEncoder.create(
-            input_dim=50,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
-        )
+        encoder = ProjectionEncoder.create(input_dim=50, dimensions=100, key=jax.random.PRNGKey(42))
 
         assert encoder.input_dim == 50
         assert encoder.dimensions == 100
@@ -295,21 +234,14 @@ class TestProjectionEncoder:
     def test_creation_with_bsc(self):
         """Test ProjectionEncoder with BSC model."""
         encoder = ProjectionEncoder.create(
-            input_dim=50,
-            dimensions=100,
-            vsa_model="bsc",
-            key=jax.random.PRNGKey(42)
+            input_dim=50, dimensions=100, vsa_model="bsc", key=jax.random.PRNGKey(42)
         )
 
         assert encoder.vsa_model_name == "bsc"
 
     def test_encode_single_input(self):
         """Test encoding a single input."""
-        encoder = ProjectionEncoder.create(
-            input_dim=50,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
-        )
+        encoder = ProjectionEncoder.create(input_dim=50, dimensions=100, key=jax.random.PRNGKey(42))
 
         x = jax.random.normal(jax.random.PRNGKey(0), (50,))
         encoded = encoder.encode(x)
@@ -319,11 +251,7 @@ class TestProjectionEncoder:
 
     def test_encode_batch(self):
         """Test encoding a batch of inputs."""
-        encoder = ProjectionEncoder.create(
-            input_dim=50,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
-        )
+        encoder = ProjectionEncoder.create(input_dim=50, dimensions=100, key=jax.random.PRNGKey(42))
 
         batch = jax.random.normal(jax.random.PRNGKey(0), (10, 50))
         encoded = encoder.encode_batch(batch)
@@ -334,10 +262,7 @@ class TestProjectionEncoder:
     def test_encode_with_map_produces_normalized_output(self):
         """Test that MAP encoding produces normalized output."""
         encoder = ProjectionEncoder.create(
-            input_dim=50,
-            dimensions=100,
-            vsa_model="map",
-            key=jax.random.PRNGKey(42)
+            input_dim=50, dimensions=100, vsa_model="map", key=jax.random.PRNGKey(42)
         )
 
         x = jax.random.normal(jax.random.PRNGKey(0), (50,))
@@ -349,10 +274,7 @@ class TestProjectionEncoder:
     def test_encode_with_bsc_produces_binary_output(self):
         """Test that BSC encoding produces binary output."""
         encoder = ProjectionEncoder.create(
-            input_dim=50,
-            dimensions=100,
-            vsa_model="bsc",
-            key=jax.random.PRNGKey(42)
+            input_dim=50, dimensions=100, vsa_model="bsc", key=jax.random.PRNGKey(42)
         )
 
         x = jax.random.normal(jax.random.PRNGKey(0), (50,))
@@ -363,9 +285,7 @@ class TestProjectionEncoder:
     def test_similar_inputs_produce_similar_encodings(self):
         """Test that similar inputs produce similar encodings."""
         encoder = ProjectionEncoder.create(
-            input_dim=50,
-            dimensions=1000,
-            key=jax.random.PRNGKey(42)
+            input_dim=50, dimensions=1000, key=jax.random.PRNGKey(42)
         )
 
         x1 = jax.random.normal(jax.random.PRNGKey(0), (50,))
@@ -384,11 +304,7 @@ class TestProjectionEncoder:
 
     def test_encoding_reproducibility(self):
         """Test that encoding is reproducible."""
-        encoder = ProjectionEncoder.create(
-            input_dim=50,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
-        )
+        encoder = ProjectionEncoder.create(input_dim=50, dimensions=100, key=jax.random.PRNGKey(42))
 
         x = jax.random.normal(jax.random.PRNGKey(0), (50,))
         encoded1 = encoder.encode(x)
@@ -398,11 +314,7 @@ class TestProjectionEncoder:
 
     def test_projection_matrix_normalization(self):
         """Test that projection matrix is properly normalized."""
-        encoder = ProjectionEncoder.create(
-            input_dim=50,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
-        )
+        encoder = ProjectionEncoder.create(input_dim=50, dimensions=100, key=jax.random.PRNGKey(42))
 
         # Check that columns have approximately equal variance
         col_norms = jnp.linalg.norm(encoder.projection_matrix, axis=0)

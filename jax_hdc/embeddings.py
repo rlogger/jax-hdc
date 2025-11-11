@@ -11,7 +11,37 @@ import jax.numpy as jnp
 from jax_hdc import functional as F
 from jax_hdc.vsa import VSAModel, create_vsa_model
 
-@jax.tree_util.register_dataclass
+# JAX compatibility: register_dataclass behavior changed across versions
+# In JAX >= 0.4.14, it can be used as a decorator without arguments
+# In older versions, it requires explicit data_fields and meta_fields
+try:
+    # Try newer JAX syntax (>= 0.4.14)
+    _test_cls = type("_Test", (), {"__annotations__": {"x": int}})
+    _test_dataclass = jax.tree_util.register_dataclass(_test_cls)
+    del _test_cls, _test_dataclass
+
+    def register_dataclass(cls: type) -> type:
+        """Wrapper for jax.tree_util.register_dataclass."""
+        return jax.tree_util.register_dataclass(cls)
+
+except TypeError:
+    # Fallback for older JAX versions
+    import dataclasses as _dataclasses
+
+    def register_dataclass(cls: type) -> type:
+        """Compatibility wrapper for register_dataclass with older JAX versions."""
+        data_fields = []
+        meta_fields = []
+        for f in _dataclasses.fields(cls):
+            if f.metadata.get("static", False):
+                meta_fields.append(f.name)
+            else:
+                data_fields.append(f.name)
+
+        return jax.tree_util.register_dataclass(cls, data_fields, meta_fields)
+
+
+@register_dataclass
 @dataclass
 class RandomEncoder:
     """Encoder using random hypervectors for discrete features.
@@ -57,7 +87,7 @@ class RandomEncoder:
         num_values: int,
         dimensions: int = 10000,
         vsa_model: Union[str, VSAModel] = "map",
-        key: Optional[jax.Array] = None
+        key: Optional[jax.Array] = None,
     ) -> "RandomEncoder":
         """Create a random encoder.
 
@@ -90,7 +120,7 @@ class RandomEncoder:
             num_features=num_features,
             num_values=num_values,
             dimensions=dimensions,
-            vsa_model_name=vsa_model_name
+            vsa_model_name=vsa_model_name,
         )
 
     @jax.jit
@@ -105,9 +135,7 @@ class RandomEncoder:
         """
         # Select hypervector for each feature
         # codebook[i, indices[i]] selects the hypervector for feature i with value indices[i]
-        selected = jax.vmap(lambda i: self.codebook[i, indices[i]])(
-            jnp.arange(self.num_features)
-        )
+        selected = jax.vmap(lambda i: self.codebook[i, indices[i]])(jnp.arange(self.num_features))
 
         # Bundle all feature hypervectors
         if self.vsa_model_name == "bsc":
@@ -128,7 +156,7 @@ class RandomEncoder:
         return jax.vmap(self.encode)(indices)
 
 
-@jax.tree_util.register_dataclass
+@register_dataclass
 @dataclass
 class LevelEncoder:
     """Encoder for continuous values using level hypervectors.
@@ -183,7 +211,7 @@ class LevelEncoder:
         max_value: float = 1.0,
         vsa_model: Union[str, VSAModel] = "map",
         encoding_type: str = "linear",
-        key: Optional[jax.Array] = None
+        key: Optional[jax.Array] = None,
     ) -> "LevelEncoder":
         """Create a level encoder.
 
@@ -220,7 +248,7 @@ class LevelEncoder:
             min_value=min_value,
             max_value=max_value,
             vsa_model_name=vsa_model_name,
-            encoding_type=encoding_type
+            encoding_type=encoding_type,
         )
 
     @jax.jit
@@ -273,7 +301,7 @@ class LevelEncoder:
         return jax.vmap(self.encode)(values)
 
 
-@jax.tree_util.register_dataclass
+@register_dataclass
 @dataclass
 class ProjectionEncoder:
     """Encoder using random projection for high-dimensional data.
@@ -316,7 +344,7 @@ class ProjectionEncoder:
         input_dim: int,
         dimensions: int = 10000,
         vsa_model: Union[str, VSAModel] = "map",
-        key: Optional[jax.Array] = None
+        key: Optional[jax.Array] = None,
     ) -> "ProjectionEncoder":
         """Create a projection encoder.
 
@@ -346,7 +374,7 @@ class ProjectionEncoder:
             projection_matrix=projection_matrix,
             input_dim=input_dim,
             dimensions=dimensions,
-            vsa_model_name=vsa_model_name
+            vsa_model_name=vsa_model_name,
         )
 
     @jax.jit

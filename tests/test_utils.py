@@ -15,15 +15,15 @@ class TestConfigureMemory:
         """Test memory configuration with defaults."""
         utils.configure_memory(preallocate=False, memory_fraction=0.8)
 
-        assert os.environ.get('XLA_PYTHON_CLIENT_PREALLOCATE') == 'false'
-        assert os.environ.get('XLA_PYTHON_CLIENT_MEM_FRACTION') == '0.8'
+        assert os.environ.get("XLA_PYTHON_CLIENT_PREALLOCATE") == "false"
+        assert os.environ.get("XLA_PYTHON_CLIENT_MEM_FRACTION") == "0.8"
 
     def test_configure_memory_custom(self):
         """Test memory configuration with custom values."""
         utils.configure_memory(preallocate=True, memory_fraction=0.5, device="gpu")
 
-        assert os.environ.get('XLA_PYTHON_CLIENT_PREALLOCATE') == 'true'
-        assert os.environ.get('XLA_PYTHON_CLIENT_MEM_FRACTION') == '0.5'
+        assert os.environ.get("XLA_PYTHON_CLIENT_PREALLOCATE") == "true"
+        assert os.environ.get("XLA_PYTHON_CLIENT_MEM_FRACTION") == "0.5"
 
     def test_configure_memory_cpu(self):
         """Test memory configuration for CPU."""
@@ -38,16 +38,16 @@ class TestGetDevice:
 
     def test_get_default_device(self):
         """Test getting default CPU device."""
-        device = utils.get_device('cpu', 0)
+        device = utils.get_device("cpu", 0)
 
         assert device is not None
-        assert device.platform == 'cpu'
+        assert device.platform == "cpu"
 
     def test_get_device_fallback(self):
         """Test device fallback when GPU not available."""
         # Try to get a device that might not exist
         # Should fallback to CPU without error
-        device = utils.get_device('tpu', 0)
+        device = utils.get_device("tpu", 0)
 
         assert device is not None
 
@@ -65,7 +65,7 @@ class TestGetDeviceMemoryStats:
 
     def test_get_memory_stats_specific_device(self):
         """Test getting memory statistics for specific device."""
-        device = jax.devices('cpu')[0]
+        device = jax.devices("cpu")[0]
         stats = utils.get_device_memory_stats(device)
 
         assert isinstance(stats, dict)
@@ -101,6 +101,7 @@ class TestBenchmarkFunction:
 
     def test_benchmark_simple_function(self):
         """Test benchmarking a simple function."""
+
         def add_arrays(x, y):
             return x + y
 
@@ -109,20 +110,21 @@ class TestBenchmarkFunction:
 
         stats = utils.benchmark_function(add_arrays, x, y, num_trials=10, warmup=2)
 
-        assert 'mean_ms' in stats
-        assert 'std_ms' in stats
-        assert 'min_ms' in stats
-        assert 'max_ms' in stats
-        assert 'median_ms' in stats
-        assert stats['num_trials'] == 10
+        assert "mean_ms" in stats
+        assert "std_ms" in stats
+        assert "min_ms" in stats
+        assert "max_ms" in stats
+        assert "median_ms" in stats
+        assert stats["num_trials"] == 10
 
         # All times should be positive
-        assert stats['mean_ms'] >= 0
-        assert stats['min_ms'] >= 0
-        assert stats['max_ms'] >= stats['min_ms']
+        assert stats["mean_ms"] >= 0
+        assert stats["min_ms"] >= 0
+        assert stats["max_ms"] >= stats["min_ms"]
 
     def test_benchmark_with_kwargs(self):
         """Test benchmarking with keyword arguments."""
+
         def multiply_with_factor(x, factor=2.0):
             return x * factor
 
@@ -130,8 +132,8 @@ class TestBenchmarkFunction:
 
         stats = utils.benchmark_function(multiply_with_factor, x, factor=3.0, num_trials=5)
 
-        assert stats['num_trials'] == 5
-        assert stats['mean_ms'] >= 0
+        assert stats["num_trials"] == 5
+        assert stats["mean_ms"] >= 0
 
 
 class TestCheckShapes:
@@ -225,10 +227,7 @@ class TestPrintModelInfo:
     def test_print_encoder_info(self, capsys):
         """Test printing encoder info."""
         encoder = RandomEncoder.create(
-            num_features=5,
-            num_values=10,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
+            num_features=5, num_values=10, dimensions=100, key=jax.random.PRNGKey(42)
         )
         utils.print_model_info(encoder)
 
@@ -238,9 +237,7 @@ class TestPrintModelInfo:
     def test_print_classifier_info(self, capsys):
         """Test printing classifier info."""
         classifier = CentroidClassifier.create(
-            num_classes=3,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
+            num_classes=3, dimensions=100, key=jax.random.PRNGKey(42)
         )
         utils.print_model_info(classifier)
 
@@ -262,10 +259,7 @@ class TestCountParameters:
     def test_count_encoder_parameters(self):
         """Test counting encoder parameters."""
         encoder = RandomEncoder.create(
-            num_features=5,
-            num_values=10,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
+            num_features=5, num_values=10, dimensions=100, key=jax.random.PRNGKey(42)
         )
         count = utils.count_parameters(encoder)
 
@@ -275,9 +269,7 @@ class TestCountParameters:
     def test_count_classifier_parameters(self):
         """Test counting classifier parameters."""
         classifier = CentroidClassifier.create(
-            num_classes=3,
-            dimensions=100,
-            key=jax.random.PRNGKey(42)
+            num_classes=3, dimensions=100, key=jax.random.PRNGKey(42)
         )
         count = utils.count_parameters(classifier)
 
@@ -290,7 +282,7 @@ class TestToDevice:
 
     def test_to_device_single_array(self):
         """Test moving single array to device."""
-        device = jax.devices('cpu')[0]
+        device = jax.devices("cpu")[0]
         x = jnp.ones(100)
 
         x_device = utils.to_device(x, device)
@@ -299,7 +291,7 @@ class TestToDevice:
 
     def test_to_device_tuple(self):
         """Test moving tuple of arrays to device."""
-        device = jax.devices('cpu')[0]
+        device = jax.devices("cpu")[0]
         x = jnp.ones(100)
         y = jnp.zeros(100)
 
@@ -310,7 +302,7 @@ class TestToDevice:
 
     def test_to_device_list(self):
         """Test moving list of arrays to device."""
-        device = jax.devices('cpu')[0]
+        device = jax.devices("cpu")[0]
         x = jnp.ones(100)
         y = jnp.zeros(100)
 
@@ -360,17 +352,17 @@ class TestGetVersionInfo:
         info = utils.get_version_info()
 
         assert isinstance(info, dict)
-        assert 'jax_hdc' in info
-        assert 'jax' in info
-        assert 'jaxlib' in info
+        assert "jax_hdc" in info
+        assert "jax" in info
+        assert "jaxlib" in info
 
         # JAX-HDC version should be a string
-        assert isinstance(info['jax_hdc'], str)
-        assert isinstance(info['jax'], str)
+        assert isinstance(info["jax_hdc"], str)
+        assert isinstance(info["jax"], str)
 
     def test_version_format(self):
         """Test that version strings have expected format."""
         info = utils.get_version_info()
 
         # Version should contain something like "0.1.0"
-        assert len(info['jax_hdc']) > 0
+        assert len(info["jax_hdc"]) > 0

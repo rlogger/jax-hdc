@@ -33,10 +33,10 @@ from jax_hdc.functional import (
 from jax_hdc.vsa import BSC, MAP, HRR, FHRR
 
 # Embeddings
-from jax_hdc.embeddings import RandomEncoder, LevelEncoder
+from jax_hdc.embeddings import RandomEncoder, LevelEncoder, ProjectionEncoder
 
 # Models
-from jax_hdc.models import CentroidClassifier
+from jax_hdc.models import CentroidClassifier, AdaptiveHDC
 
 __all__ = [
     # Modules
@@ -64,6 +64,8 @@ __all__ = [
     # Embeddings
     "RandomEncoder",
     "LevelEncoder",
+    "ProjectionEncoder",
     # Models
     "CentroidClassifier",
+    "AdaptiveHDC",
 ]

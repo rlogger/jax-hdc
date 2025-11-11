@@ -87,11 +87,7 @@ def random_binary_vectors_1d(prng_key, default_dimensions):
 def random_encoder(default_dimensions, prng_key):
     """Create a RandomEncoder."""
     return RandomEncoder.create(
-        num_features=5,
-        num_values=10,
-        dimensions=default_dimensions,
-        vsa_model="map",
-        key=prng_key
+        num_features=5, num_values=10, dimensions=default_dimensions, vsa_model="map", key=prng_key
     )
 
 
@@ -104,7 +100,7 @@ def level_encoder(default_dimensions, prng_key):
         min_value=0.0,
         max_value=1.0,
         vsa_model="map",
-        key=prng_key
+        key=prng_key,
     )
 
 
@@ -112,10 +108,7 @@ def level_encoder(default_dimensions, prng_key):
 def projection_encoder(default_dimensions, prng_key):
     """Create a ProjectionEncoder."""
     return ProjectionEncoder.create(
-        input_dim=50,
-        dimensions=default_dimensions,
-        vsa_model="map",
-        key=prng_key
+        input_dim=50, dimensions=default_dimensions, vsa_model="map", key=prng_key
     )
 
 
@@ -124,10 +117,7 @@ def projection_encoder(default_dimensions, prng_key):
 def centroid_classifier(default_dimensions, prng_key):
     """Create a CentroidClassifier."""
     return CentroidClassifier.create(
-        num_classes=3,
-        dimensions=default_dimensions,
-        vsa_model="map",
-        key=prng_key
+        num_classes=3, dimensions=default_dimensions, vsa_model="map", key=prng_key
     )
 
 
@@ -135,10 +125,7 @@ def centroid_classifier(default_dimensions, prng_key):
 def adaptive_hdc_classifier(default_dimensions, prng_key):
     """Create an AdaptiveHDC classifier."""
     return AdaptiveHDC.create(
-        num_classes=3,
-        dimensions=default_dimensions,
-        vsa_model="map",
-        key=prng_key
+        num_classes=3, dimensions=default_dimensions, vsa_model="map", key=prng_key
     )
 
 
@@ -150,17 +137,17 @@ def classification_data(map_model, prng_key):
 
     # Training data
     train_hvs = map_model.random(key_train, (30, map_model.dimensions))
-    train_labels = jnp.array([0]*10 + [1]*10 + [2]*10)
+    train_labels = jnp.array([0] * 10 + [1] * 10 + [2] * 10)
 
     # Test data
     test_hvs = map_model.random(key_test, (15, map_model.dimensions))
-    test_labels = jnp.array([0]*5 + [1]*5 + [2]*5)
+    test_labels = jnp.array([0] * 5 + [1] * 5 + [2] * 5)
 
     return {
-        'train_hvs': train_hvs,
-        'train_labels': train_labels,
-        'test_hvs': test_hvs,
-        'test_labels': test_labels
+        "train_hvs": train_hvs,
+        "train_labels": train_labels,
+        "test_hvs": test_hvs,
+        "test_labels": test_labels,
     }
 
 
@@ -168,32 +155,38 @@ def classification_data(map_model, prng_key):
 @pytest.fixture
 def cpu_device():
     """Get CPU device."""
-    return jax.devices('cpu')[0]
+    return jax.devices("cpu")[0]
 
 
 # Helper function fixtures
 @pytest.fixture
 def assert_normalized():
     """Helper function to assert vectors are normalized."""
+
     def _assert_normalized(vectors, axis=-1, atol=1e-5):
         norms = jnp.linalg.norm(vectors, axis=axis)
         assert jnp.allclose(norms, 1.0, atol=atol), f"Vectors not normalized: {norms}"
+
     return _assert_normalized
 
 
 @pytest.fixture
 def assert_similar():
     """Helper function to assert vectors are similar."""
+
     def _assert_similar(v1, v2, threshold=0.9):
         similarity = jnp.dot(v1, v2) / (jnp.linalg.norm(v1) * jnp.linalg.norm(v2))
         assert similarity > threshold, f"Similarity {similarity} < {threshold}"
+
     return _assert_similar
 
 
 @pytest.fixture
 def assert_dissimilar():
     """Helper function to assert vectors are dissimilar."""
+
     def _assert_dissimilar(v1, v2, threshold=0.5):
         similarity = jnp.dot(v1, v2) / (jnp.linalg.norm(v1) * jnp.linalg.norm(v2))
         assert similarity < threshold, f"Similarity {similarity} >= {threshold}"
+
     return _assert_dissimilar
