@@ -17,9 +17,11 @@ References:
 """
 
 import time
+
 import jax
 import jax.numpy as jnp
-from jax_hdc import MAP, BSC
+
+from jax_hdc import BSC, MAP
 from jax_hdc.utils import normalize
 
 

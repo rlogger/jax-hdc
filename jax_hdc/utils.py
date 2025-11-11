@@ -6,7 +6,8 @@ benchmarking, and other common operations.
 
 import os
 import time
-from typing import Optional, Union, List, Tuple, Callable, Any, Dict
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
 import jax
 import jax.numpy as jnp
 

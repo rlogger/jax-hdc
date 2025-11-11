@@ -1,11 +1,12 @@
 """Tests for utility functions."""
 
 import os
+
 import jax
 import jax.numpy as jnp
 import pytest
-from jax_hdc import utils
-from jax_hdc import MAP, RandomEncoder, CentroidClassifier
+
+from jax_hdc import MAP, CentroidClassifier, RandomEncoder, utils
 
 
 class TestConfigureMemory:

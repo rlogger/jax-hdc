@@ -1,9 +1,10 @@
 """Tests for VSA models."""
 
-import pytest
 import jax
 import jax.numpy as jnp
-from jax_hdc.vsa import BSC, MAP, HRR, FHRR, create_vsa_model
+import pytest
+
+from jax_hdc.vsa import BSC, FHRR, HRR, MAP, create_vsa_model
 
 
 class TestVSAModels:

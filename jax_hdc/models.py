@@ -4,10 +4,13 @@ This module provides various HDC learning algorithms including centroid-based
 classification, learning vector quantization, and gradient-based methods.
 """
 
-from dataclasses import dataclass, field, replace as dataclass_replace
-from typing import Optional, Union, Callable, Any, List
+from dataclasses import dataclass, field
+from dataclasses import replace as dataclass_replace
+from typing import Any, Callable, List, Optional, Union
+
 import jax
 import jax.numpy as jnp
+
 from jax_hdc import functional as F
 from jax_hdc.vsa import VSAModel, create_vsa_model
 

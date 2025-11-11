@@ -3,9 +3,10 @@
 import jax
 import jax.numpy as jnp
 import pytest
-from jax_hdc import MAP, BSC, HRR, FHRR
-from jax_hdc.embeddings import RandomEncoder, LevelEncoder, ProjectionEncoder
-from jax_hdc.models import CentroidClassifier, AdaptiveHDC
+
+from jax_hdc import BSC, FHRR, HRR, MAP
+from jax_hdc.embeddings import LevelEncoder, ProjectionEncoder, RandomEncoder
+from jax_hdc.models import AdaptiveHDC, CentroidClassifier
 
 
 @pytest.fixture

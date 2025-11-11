@@ -7,10 +7,10 @@ This module provides the fundamental operations for manipulating hypervectors:
 - Similarity: Measures relatedness between hypervectors
 """
 
-from typing import Optional, Union, Callable
+from typing import Callable, Optional, Union
+
 import jax
 import jax.numpy as jnp
-
 
 # ============================================================================
 # Binary Spatter Code (BSC) Operations
@@ -226,7 +226,8 @@ def cosine_similarity(x: jax.Array, y: jax.Array) -> jax.Array:
     """
     x_norm = x / (jnp.linalg.norm(x, axis=-1, keepdims=True) + 1e-8)
     y_norm = y / (jnp.linalg.norm(y, axis=-1, keepdims=True) + 1e-8)
-    return jnp.sum(x_norm * y_norm, axis=-1)
+    # Clip to handle floating point precision issues
+    return jnp.clip(jnp.sum(x_norm * y_norm, axis=-1), -1.0, 1.0)
 
 
 # ============================================================================
