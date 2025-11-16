@@ -38,6 +38,54 @@ pip install -e .
 
 This installs the package in development mode with core dependencies (jax, jaxlib, numpy, optax).
 
+### Using Nix/NixOS
+
+JAX-HDC supports Nix for reproducible dependency management. This is particularly useful for NixOS users or anyone who wants declarative package management.
+
+#### With Nix Flakes (recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/rlogger/jax-hdc.git
+cd jax-hdc
+
+# Enter development shell
+nix develop
+
+# Or build the package
+nix build
+
+# Run examples directly
+nix run .#basic-operations
+nix run .#kanerva-example
+nix run .#classification-simple
+```
+
+#### With traditional Nix
+
+```bash
+# Clone the repository
+git clone https://github.com/rlogger/jax-hdc.git
+cd jax-hdc
+
+# Enter development shell
+nix-shell
+
+# Or build the package
+nix-build
+```
+
+#### With direnv (automatic environment loading)
+
+If you have [direnv](https://direnv.net/) installed:
+
+```bash
+cd jax-hdc
+direnv allow  # Automatically loads the Nix environment
+```
+
+The development environment includes all dependencies for development, testing, documentation, and running examples.
+
 ### Development installation
 
 For development with testing and code quality tools:

@@ -68,3 +68,9 @@ data/
 # Logs
 *.log
 logs/
+
+# Nix
+result
+result-*
+.direnv/
+.envrc.cache
