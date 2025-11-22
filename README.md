@@ -12,7 +12,7 @@
 
 JAX-HDC is a Python library for _Hyperdimensional Computing_ (HDC) and _Vector Symbolic Architectures_ (VSA) built on JAX. The library leverages JAX's XLA compilation, automatic vectorization, and hardware acceleration to provide efficient HDC implementations with a functional programming interface.
 
-**Development Status**: Alpha - Core functionality implemented, API subject to change.
+**Development Status**: Alpha 
 
 ## Features
 
