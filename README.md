@@ -328,19 +328,6 @@ Contributions are accepted via Pull Requests. For major changes, open an issue f
 - Performance optimizations
 - Documentation improvements
 
-## Citation
-
-If you use JAX-HDC in your research, please cite:
-
-```bibtex
-@article{singh2024jaxhdc,
-  title   = {JAX-HDC: A High-Performance Library for Hyperdimensional Computing with Hardware Acceleration},
-  author  = {Singh, Rajdeep},
-  journal = {arXiv preprint arXiv:XXXX.XXXXX},
-  year    = {2024},
-  url     = {https://github.com/rlogger/jax-hdc}
-}
-```
 ## Acknowledgments
 
 JAX-HDC is inspired by the excellent [TorchHD](https://github.com/hyperdimensional-computing/torchhd) library. We thank the TorchHD authors for their foundational work in creating accessible HDC tools.
