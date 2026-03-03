@@ -100,6 +100,17 @@ class TestRandomEncoder:
 
         assert jnp.allclose(encoded1, encoded2)
 
+    def test_encode_clamps_out_of_bounds_indices(self):
+        """Test that out-of-bounds indices are clamped to valid range."""
+        encoder = RandomEncoder.create(
+            num_features=3, num_values=5, dimensions=100, key=jax.random.PRNGKey(42)
+        )
+        # Indices outside [0, 4] should be clamped
+        indices = jnp.array([-1, 10, 100])
+        encoded = encoder.encode(indices)
+        assert encoded.shape == (100,)
+        assert jnp.isfinite(encoded).all()
+
     def test_creation_with_vsa_model_instance(self):
         """Test RandomEncoder creation with VSAModel instance."""
         from jax_hdc.vsa import MAP
@@ -132,6 +143,25 @@ class TestLevelEncoder:
         assert encoder.vsa_model_name == "map"
         assert encoder.encoding_type == "linear"
         assert encoder.level_hvs.shape == (50, 100)
+
+    def test_creation_rejects_min_equals_max(self):
+        """Test that LevelEncoder rejects min_value >= max_value."""
+        with pytest.raises(ValueError, match="min_value.*must be less than max_value"):
+            LevelEncoder.create(
+                num_levels=50,
+                dimensions=100,
+                min_value=1.0,
+                max_value=1.0,
+                key=jax.random.PRNGKey(42),
+            )
+        with pytest.raises(ValueError, match="min_value.*must be less than max_value"):
+            LevelEncoder.create(
+                num_levels=50,
+                dimensions=100,
+                min_value=5.0,
+                max_value=1.0,
+                key=jax.random.PRNGKey(42),
+            )
 
     def test_creation_with_custom_range(self):
         """Test LevelEncoder with custom value range."""
@@ -417,6 +447,16 @@ class TestGraphEncoder:
         edges = jnp.array([[0, 1], [1, 2], [2, 0]])
         hv = encoder.encode_edges(edges)
         assert hv.shape == (100,)
+
+    def test_encode_edges_clamps_out_of_bounds_indices(self):
+        """Test that out-of-bounds node indices in edges are clamped."""
+        encoder = GraphEncoder.create(
+            num_nodes=5, dimensions=100, key=jax.random.PRNGKey(42)
+        )
+        edges = jnp.array([[0, 1], [10, 20], [-1, 100]])  # Out-of-bounds
+        hv = encoder.encode_edges(edges)
+        assert hv.shape == (100,)
+        assert jnp.isfinite(hv).all()
         assert jnp.isfinite(hv).all()
 
     def test_creation_with_vsa_model_instance(self):

@@ -39,6 +39,20 @@ Example::
    test_labels = jax.random.randint(key, (20,), 0, 10)
    accuracy = classifier.score(test_hvs, test_labels)
 
+LVQClassifier
+-------------
+
+.. autoclass:: jax_hdc.models.LVQClassifier
+   :members:
+   :undoc-members:
+
+RegularizedLSClassifier
+----------------------
+
+.. autoclass:: jax_hdc.models.RegularizedLSClassifier
+   :members:
+   :undoc-members:
+
 AdaptiveHDC
 -----------
 

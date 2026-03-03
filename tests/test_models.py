@@ -111,6 +111,16 @@ class TestCentroidClassifier:
         assert jnp.allclose(jnp.sum(probs, axis=-1), 1.0, atol=1e-5)
         assert jnp.all(probs >= 0) and jnp.all(probs <= 1)
 
+    def test_fit_raises_on_empty_training_data(self):
+        """Test that fit raises ValueError on empty training data."""
+        classifier = CentroidClassifier.create(
+            num_classes=3, dimensions=100, key=jax.random.PRNGKey(42)
+        )
+        empty_hvs = jnp.zeros((0, 100))
+        empty_labels = jnp.array([], dtype=jnp.int32)
+        with pytest.raises(ValueError, match="training data is empty"):
+            classifier.fit(empty_hvs, empty_labels)
+
     def test_fit(self):
         """Test fitting the classifier on training data."""
         vsa = MAP.create(dimensions=100)
@@ -291,6 +301,16 @@ class TestAdaptiveHDC:
         assert predictions.shape == (10,)
         assert jnp.all((predictions >= 0) & (predictions < 3))
 
+    def test_fit_raises_on_empty_training_data(self):
+        """Test that fit raises ValueError on empty training data."""
+        classifier = AdaptiveHDC.create(
+            num_classes=3, dimensions=100, key=jax.random.PRNGKey(42)
+        )
+        empty_hvs = jnp.zeros((0, 100))
+        empty_labels = jnp.array([], dtype=jnp.int32)
+        with pytest.raises(ValueError, match="training data is empty"):
+            classifier.fit(empty_hvs, empty_labels)
+
     def test_fit_single_epoch(self):
         """Test fitting with a single epoch."""
         vsa = MAP.create(dimensions=100)
@@ -441,6 +461,16 @@ class TestLVQClassifier:
         assert pred_single.shape == ()
         assert pred_batch.shape == (5,)
 
+    def test_fit_raises_on_empty_training_data(self):
+        """Test that fit raises ValueError on empty training data."""
+        clf = LVQClassifier.create(
+            num_classes=3, dimensions=100, key=jax.random.PRNGKey(42)
+        )
+        empty_hvs = jnp.zeros((0, 100))
+        empty_labels = jnp.array([], dtype=jnp.int32)
+        with pytest.raises(ValueError, match="training data is empty"):
+            clf.fit(empty_hvs, empty_labels)
+
     def test_fit_and_score(self):
         """Test fit and score."""
         vsa = MAP.create(dimensions=100)
@@ -479,6 +509,14 @@ class TestRegularizedLSClassifier:
             dimensions=50, num_classes=4, reg=0.01
         )
         assert clf.reg == 0.01
+
+    def test_fit_raises_on_empty_training_data(self):
+        """Test that fit raises ValueError on empty training data."""
+        clf = RegularizedLSClassifier.create(dimensions=100, num_classes=3)
+        empty_hvs = jnp.zeros((0, 100))
+        empty_labels = jnp.array([], dtype=jnp.int32)
+        with pytest.raises(ValueError, match="training data is empty"):
+            clf.fit(empty_hvs, empty_labels)
 
     def test_fit_and_predict(self):
         """Test fit and predict."""

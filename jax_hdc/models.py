@@ -12,6 +12,7 @@ import jax
 import jax.numpy as jnp
 
 from jax_hdc import functional as F
+from jax_hdc.constants import EPS
 from jax_hdc.vsa import VSAModel, create_vsa_model
 
 # JAX compatibility: register_dataclass behavior changed across versions
@@ -210,7 +211,14 @@ class CentroidClassifier:
 
         Returns:
             Trained CentroidClassifier (new instance, immutable)
+
+        Raises:
+            ValueError: If training data is empty
         """
+        n_samples = train_hvs.shape[0]
+        if n_samples == 0:
+            raise ValueError("Cannot fit CentroidClassifier: training data is empty")
+
         # Compute centroid for each class using where instead of boolean indexing
         new_prototypes_list: List[jax.Array] = []
 
@@ -239,7 +247,7 @@ class CentroidClassifier:
                     summed = jnp.sum(weighted_hvs, axis=0)
                     # Normalize
                     norm = jnp.linalg.norm(summed)
-                    centroid = summed / (norm + 1e-8)
+                    centroid = summed / (norm + EPS)
 
                 new_prototypes_list.append(centroid)
             else:
@@ -276,7 +284,7 @@ class CentroidClassifier:
             new_prototype = (1 - learning_rate) * old_prototype + learning_rate * sample_hv
             # Normalize
             norm = jnp.linalg.norm(new_prototype)
-            new_prototype = new_prototype / (norm + 1e-8)
+            new_prototype = new_prototype / (norm + EPS)
 
         # Update prototypes array
         new_prototypes = self.prototypes.at[label].set(new_prototype)
@@ -409,7 +417,13 @@ class AdaptiveHDC:
 
         Returns:
             Trained classifier
+
+        Raises:
+            ValueError: If training data is empty
         """
+        if train_hvs.shape[0] == 0:
+            raise ValueError("Cannot fit AdaptiveHDC: training data is empty")
+
         # Initialize with centroids using where instead of boolean indexing
         classifier = self
         for class_idx in range(self.num_classes):
@@ -431,7 +445,7 @@ class AdaptiveHDC:
                     weighted_hvs = train_hvs * weights
                     summed = jnp.sum(weighted_hvs, axis=0)
                     norm = jnp.linalg.norm(summed)
-                    centroid = summed / (norm + 1e-8)
+                    centroid = summed / (norm + EPS)
 
                 classifier = classifier.replace(
                     prototypes=classifier.prototypes.at[class_idx].set(centroid)
@@ -464,7 +478,7 @@ class AdaptiveHDC:
 
         if self.vsa_model_name != "bsc":
             new_true_proto = true_proto + learning_rate * sample_hv
-            new_true_proto = new_true_proto / (jnp.linalg.norm(new_true_proto) + 1e-8)
+            new_true_proto = new_true_proto / (jnp.linalg.norm(new_true_proto) + EPS)
         else:
             new_true_proto = F.bundle_bsc(jnp.stack([true_proto, sample_hv]), axis=0)
 
@@ -542,7 +556,13 @@ class LVQClassifier:
         epochs: int = 10,
         lr: float = 0.1,
     ) -> "LVQClassifier":
-        """Train with LVQ updates (winner-take-all, move toward/away)."""
+        """Train with LVQ updates (winner-take-all, move toward/away).
+
+        Raises:
+            ValueError: If training data is empty
+        """
+        if train_hvs.shape[0] == 0:
+            raise ValueError("Cannot fit LVQClassifier: training data is empty")
         clf = self
         for _ in range(epochs):
             for i in range(len(train_hvs)):
@@ -554,7 +574,7 @@ class LVQClassifier:
                     delta = -lr * (x - clf.prototypes[pred])
                 if self.vsa_model_name != "bsc":
                     new_p = clf.prototypes[pred] + delta
-                    new_p = new_p / (jnp.linalg.norm(new_p) + 1e-8)
+                    new_p = new_p / (jnp.linalg.norm(new_p) + EPS)
                 else:
                     new_p = F.bundle_bsc(
                         jnp.stack([clf.prototypes[pred], (clf.prototypes[pred] + delta) > 0.5]),
@@ -599,12 +619,22 @@ class RegularizedLSClassifier:
         )
 
     def fit(self, train_hvs: jax.Array, train_labels: jax.Array) -> "RegularizedLSClassifier":
-        """Fit by solving regularized least squares."""
+        """Fit by solving regularized least squares.
+
+        Uses lstsq for numerical robustness against singular/ill-conditioned systems.
+
+        Raises:
+            ValueError: If training data is empty
+        """
         n = train_hvs.shape[0]
+        if n == 0:
+            raise ValueError("Cannot fit RegularizedLSClassifier: training data is empty")
+
         Y = jax.nn.one_hot(train_labels, self.num_classes)
         XtX = train_hvs.T @ train_hvs + self.reg * jnp.eye(self.dimensions)
         XtY = train_hvs.T @ Y
-        weights = jnp.linalg.solve(XtX, XtY)
+        # Use lstsq for robustness against singular/ill-conditioned matrices
+        weights, *_ = jnp.linalg.lstsq(XtX, XtY, rcond=None)
         return self.replace(weights=weights)
 
     @jax.jit

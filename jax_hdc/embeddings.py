@@ -12,6 +12,7 @@ import jax
 import jax.numpy as jnp
 
 from jax_hdc import functional as F
+from jax_hdc.constants import EPS
 from jax_hdc.vsa import VSAModel, create_vsa_model
 
 # JAX compatibility: register_dataclass behavior changed across versions
@@ -131,11 +132,14 @@ class RandomEncoder:
         """Encode discrete features as hypervectors.
 
         Args:
-            indices: Feature indices of shape (num_features,) with values in [0, num_values)
+            indices: Feature indices of shape (num_features,) with values in [0, num_values).
+                     Out-of-bounds indices are clamped to valid range.
 
         Returns:
             Encoded hypervector of shape (dimensions,)
         """
+        # Clamp indices to valid range to avoid out-of-bounds access
+        indices = jnp.clip(indices.astype(jnp.int32), 0, self.num_values - 1)
         # Select hypervector for each feature
         # codebook[i, indices[i]] selects the hypervector for feature i with value indices[i]
         selected = jax.vmap(lambda i: self.codebook[i, indices[i]])(jnp.arange(self.num_features))
@@ -241,6 +245,12 @@ class LevelEncoder:
             vsa_model_name = vsa_model.name
             vsa = vsa_model
 
+        if min_value >= max_value:
+            raise ValueError(
+                f"min_value ({min_value}) must be less than max_value ({max_value}). "
+                "Use a non-empty range for level encoding."
+            )
+
         # Generate random level hypervectors
         level_hvs = vsa.random(key, shape=(num_levels, dimensions))
 
@@ -264,8 +274,9 @@ class LevelEncoder:
         Returns:
             Encoded hypervector of shape (dimensions,) or batch shape + (dimensions,)
         """
-        # Normalize value to [0, num_levels - 1]
-        normalized = (value - self.min_value) / (self.max_value - self.min_value)
+        # Normalize value to [0, num_levels - 1] (range validated at create time)
+        value_range = self.max_value - self.min_value
+        normalized = (value - self.min_value) / jnp.maximum(value_range, EPS)
         normalized = jnp.clip(normalized, 0.0, 1.0)
         level_pos = normalized * (self.num_levels - 1)
 
@@ -286,7 +297,7 @@ class LevelEncoder:
             encoded = (1 - weight[..., None]) * lower_hv + weight[..., None] * upper_hv
             # Normalize
             norm = jnp.linalg.norm(encoded, axis=-1, keepdims=True)
-            return encoded / (norm + 1e-8)
+            return encoded / (norm + EPS)
         else:  # BSC
             # For binary, use threshold-based selection
             return jnp.where(weight[..., None] > 0.5, upper_hv, lower_hv)
@@ -400,7 +411,7 @@ class ProjectionEncoder:
         else:
             # Normalize for real-valued
             norm = jnp.linalg.norm(projected)
-            return projected / (norm + 1e-8)
+            return projected / (norm + EPS)
 
     @jax.jit
     def encode_batch(self, x: jax.Array) -> jax.Array:
@@ -488,7 +499,7 @@ class KernelEncoder:
 
         if self.vsa_model_name == "bsc":
             return features > 0
-        norm = jnp.linalg.norm(features) + 1e-8
+        norm = jnp.linalg.norm(features) + EPS
         return features / norm
 
     @jax.jit
@@ -557,14 +568,17 @@ class GraphEncoder:
         """Encode graph as bundle of bound edge pairs.
 
         Args:
-            edges: Array of shape (num_edges, 2) with node indices
+            edges: Array of shape (num_edges, 2) with node indices in [0, num_nodes).
+                   Out-of-bounds indices are clamped to valid range.
 
         Returns:
             Graph hypervector of shape (dimensions,)
         """
         edge_hvs = []
         for i in range(edges.shape[0]):
-            u, v = int(edges[i, 0]), int(edges[i, 1])
+            # Clamp node indices to valid range to avoid out-of-bounds access
+            u = int(jnp.clip(edges[i, 0], 0, self.num_nodes - 1))
+            v = int(jnp.clip(edges[i, 1], 0, self.num_nodes - 1))
             bound = F.bind_map(
                 self.node_embeddings[u],
                 F.permute(self.node_embeddings[v], 1),

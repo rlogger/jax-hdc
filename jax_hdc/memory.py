@@ -12,18 +12,17 @@ import jax.numpy as jnp
 
 from jax_hdc import functional as F
 
-try:
-    _test_cls = type("_Test", (), {"__annotations__": {"x": int}})
-    jax.tree_util.register_dataclass(_test_cls)
-    del _test_cls
 
-    def _register_dataclass(cls):
+def _register_dataclass(cls: type) -> type:
+    """Register dataclass with JAX for tree operations."""
+    try:
+        _test_cls = type("_Test", (), {"__annotations__": {"x": int}})
+        jax.tree_util.register_dataclass(_test_cls)
+        del _test_cls
         return jax.tree_util.register_dataclass(cls)
+    except TypeError:
+        import dataclasses as _dc
 
-except TypeError:
-    import dataclasses as _dc
-
-    def _register_dataclass(cls):
         data_f = [f.name for f in _dc.fields(cls) if not f.metadata.get("static", False)]
         meta_f = [f.name for f in _dc.fields(cls) if f.metadata.get("static", False)]
         return jax.tree_util.register_dataclass(cls, data_f, meta_f)

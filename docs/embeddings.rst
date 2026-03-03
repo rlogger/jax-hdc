@@ -74,3 +74,17 @@ Example::
    # Encode high-dimensional input
    image = jax.random.normal(key, (784,))
    encoded = encoder.encode(image)
+
+KernelEncoder
+-------------
+
+.. autoclass:: jax_hdc.embeddings.KernelEncoder
+   :members:
+   :undoc-members:
+
+GraphEncoder
+------------
+
+.. autoclass:: jax_hdc.embeddings.GraphEncoder
+   :members:
+   :undoc-members:

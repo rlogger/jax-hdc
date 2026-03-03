@@ -11,6 +11,7 @@ import jax
 import jax.numpy as jnp
 
 from jax_hdc import functional as F
+from jax_hdc.constants import EPS
 
 # JAX compatibility: register_dataclass behavior changed across versions
 # In JAX >= 0.4.14, it can be used as a decorator without arguments
@@ -211,7 +212,7 @@ class MAP(VSAModel):
         vectors = jax.random.normal(key, shape=shape)
         # Normalize to unit length
         norm = jnp.linalg.norm(vectors, axis=-1, keepdims=True)
-        return vectors / (norm + 1e-8)
+        return vectors / (norm + EPS)
 
 
 @register_dataclass
@@ -286,7 +287,7 @@ class HRR(VSAModel):
         vectors = jax.random.normal(key, shape=shape)
         # Normalize to unit length
         norm = jnp.linalg.norm(vectors, axis=-1, keepdims=True)
-        return vectors / (norm + 1e-8)
+        return vectors / (norm + EPS)
 
 
 @register_dataclass
@@ -334,7 +335,7 @@ class FHRR(VSAModel):
         """Bundle using normalized sum."""
         summed = jnp.sum(vectors, axis=axis)
         norm = jnp.linalg.norm(summed, axis=-1, keepdims=True)
-        return summed / (norm + 1e-8)
+        return summed / (norm + EPS)
 
     @jax.jit
     def inverse(self, x: jax.Array) -> jax.Array:
@@ -344,8 +345,8 @@ class FHRR(VSAModel):
     @jax.jit
     def similarity(self, x: jax.Array, y: jax.Array) -> jax.Array:
         """Compute cosine similarity of complex vectors."""
-        x_norm = x / (jnp.linalg.norm(x, axis=-1, keepdims=True) + 1e-8)
-        y_norm = y / (jnp.linalg.norm(y, axis=-1, keepdims=True) + 1e-8)
+        x_norm = x / (jnp.linalg.norm(x, axis=-1, keepdims=True) + EPS)
+        y_norm = y / (jnp.linalg.norm(y, axis=-1, keepdims=True) + EPS)
         # Use real part of inner product, clip to handle floating point precision
         return jnp.clip(jnp.real(jnp.sum(x_norm * jnp.conj(y_norm), axis=-1)), -1.0, 1.0)
 

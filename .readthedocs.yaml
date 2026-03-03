@@ -19,4 +19,6 @@ sphinx:
 # See https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
 python:
    install:
+   - method: pip
+     path: .  # Install jax-hdc and its deps for autodoc
    - requirements: docs/requirements.txt

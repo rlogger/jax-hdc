@@ -18,7 +18,8 @@ Quick Start
 
 Installation::
 
-   pip install jax-hdc
+   git clone https://github.com/rlogger/jax-hdc.git
+   cd jax-hdc && pip install -e .
 
 Basic usage::
 
@@ -42,6 +43,7 @@ Documentation Contents
 
    installation
    quickstart
+   classification
    examples
 
 .. toctree::
@@ -53,6 +55,7 @@ Documentation Contents
    vsa
    embeddings
    models
+   memory
    utils
 
 .. toctree::

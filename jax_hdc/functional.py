@@ -12,6 +12,8 @@ from typing import Callable, Optional, Union
 import jax
 import jax.numpy as jnp
 
+from jax_hdc.constants import EPS
+
 # ============================================================================
 # Binary Spatter Code (BSC) Operations
 # ============================================================================
@@ -178,19 +180,20 @@ def bundle_map(vectors: jax.Array, axis: int = 0) -> jax.Array:
     """
     summed = jnp.sum(vectors, axis=axis)
     norm = jnp.linalg.norm(summed, axis=-1, keepdims=True)
-    return summed / (norm + 1e-8)
+    return summed / (norm + EPS)
 
 
 @jax.jit
-def inverse_map(x: jax.Array, eps: float = 1e-8) -> jax.Array:
+def inverse_map(x: jax.Array, eps: float = EPS) -> jax.Array:
     """Compute inverse for MAP using element-wise reciprocal.
 
     For MAP binding (element-wise multiplication), the inverse is
     element-wise reciprocal: bind(bind(x, y), inverse(y)) = x.
+    Near-zero elements return 0 (no inverse; bind with 0 destroys information).
 
     Args:
         x: Real-valued hypervector of shape (..., d)
-        eps: Small constant to avoid division by zero (default: 1e-8)
+        eps: Small constant for numerical stability (default: EPS)
 
     Returns:
         Inverse hypervector
@@ -200,7 +203,9 @@ def inverse_map(x: jax.Array, eps: float = 1e-8) -> jax.Array:
         >>> inverse_map(x)
         Array([0.5, 2.0, -1.0, 0.25], dtype=float32)
     """
-    return 1.0 / (x + eps * jnp.sign(x))
+    # Avoid division by zero: when |x| <= eps, return 0 (no inverse for near-zero)
+    safe_inv = jnp.where(jnp.abs(x) > eps, 1.0 / x, 0.0)
+    return safe_inv
 
 
 @jax.jit
@@ -224,8 +229,8 @@ def cosine_similarity(x: jax.Array, y: jax.Array) -> jax.Array:
         >>> cosine_similarity(x, y)
         Array(0., dtype=float32)  # Orthogonal vectors
     """
-    x_norm = x / (jnp.linalg.norm(x, axis=-1, keepdims=True) + 1e-8)
-    y_norm = y / (jnp.linalg.norm(y, axis=-1, keepdims=True) + 1e-8)
+    x_norm = x / (jnp.linalg.norm(x, axis=-1, keepdims=True) + EPS)
+    y_norm = y / (jnp.linalg.norm(y, axis=-1, keepdims=True) + EPS)
     # Clip to handle floating point precision issues
     return jnp.clip(jnp.sum(x_norm * y_norm, axis=-1), -1.0, 1.0)
 

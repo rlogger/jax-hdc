@@ -91,6 +91,17 @@ class TestMAPOperations:
 
         assert jnp.allclose(result1, result2)
 
+    def test_inverse_map_handles_zero(self):
+        """Test that inverse_map handles zero elements without producing inf/nan."""
+        x = jnp.array([1.0, 0.0, -1.0, 2.0, 0.0])
+        inv = F.inverse_map(x)
+        assert jnp.isfinite(inv).all()
+        assert inv[1] == 0.0
+        assert inv[4] == 0.0
+        assert jnp.allclose(inv[0], 1.0)
+        assert jnp.allclose(inv[2], -1.0)
+        assert jnp.allclose(inv[3], 0.5)
+
     def test_bind_map_inverse(self):
         """Test MAP binding inverse operation."""
         key = jax.random.PRNGKey(42)

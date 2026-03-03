@@ -203,7 +203,7 @@ def check_imports() -> bool:
         print_success("jax_hdc package imports successfully")
 
         # Import submodules
-        from jax_hdc import functional, vsa, embeddings, models, utils
+        from jax_hdc import functional, vsa, embeddings, models, memory, utils
 
         print_success("All submodules import successfully")
 
