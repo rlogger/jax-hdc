@@ -262,7 +262,7 @@ def permute(x: jax.Array, shifts: int = 1) -> jax.Array:
     return jnp.roll(x, shifts, axis=-1)
 
 
-@jax.jit
+@jax.jit(static_argnames=("return_similarity",))
 def cleanup(
     query: jax.Array,
     memory: jax.Array,

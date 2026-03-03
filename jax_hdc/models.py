@@ -483,7 +483,147 @@ class AdaptiveHDC:
         return dataclass_replace(self, **updates)
 
 
+@register_dataclass
+@dataclass
+class LVQClassifier:
+    """Learning Vector Quantization classifier.
+
+    Prototypes are updated: move winner toward sample if correct,
+    away from sample if wrong.
+    """
+
+    prototypes: jax.Array
+    num_classes: int = field(metadata=dict(static=True))
+    dimensions: int = field(metadata=dict(static=True))
+    vsa_model_name: str = field(metadata=dict(static=True), default="map")
+
+    @staticmethod
+    def create(
+        num_classes: int,
+        dimensions: int = 10000,
+        vsa_model: Union[str, VSAModel] = "map",
+        key: Optional[jax.Array] = None,
+    ) -> "LVQClassifier":
+        if isinstance(vsa_model, str):
+            vsa = create_vsa_model(vsa_model, dimensions)
+        else:
+            vsa = vsa_model
+        if key is None:
+            key = jax.random.PRNGKey(0)
+        prototypes = vsa.random(key, (num_classes, dimensions))
+        return LVQClassifier(
+            prototypes=prototypes,
+            num_classes=num_classes,
+            dimensions=dimensions,
+            vsa_model_name=vsa.name,
+        )
+
+    @jax.jit
+    def predict(self, queries: jax.Array) -> jax.Array:
+        """Predict class labels by nearest prototype."""
+        is_single = queries.ndim == 1
+        if is_single:
+            queries = queries[None, :]
+        if self.vsa_model_name == "bsc":
+            sims = jax.vmap(
+                lambda q: jax.vmap(lambda p: F.hamming_similarity(q, p))(self.prototypes)
+            )(queries)
+        else:
+            sims = jax.vmap(
+                lambda q: jax.vmap(lambda p: F.cosine_similarity(q, p))(self.prototypes)
+            )(queries)
+        preds = jnp.argmax(sims, axis=-1)
+        return preds[0] if is_single else preds
+
+    def fit(
+        self,
+        train_hvs: jax.Array,
+        train_labels: jax.Array,
+        epochs: int = 10,
+        lr: float = 0.1,
+    ) -> "LVQClassifier":
+        """Train with LVQ updates (winner-take-all, move toward/away)."""
+        clf = self
+        for _ in range(epochs):
+            for i in range(len(train_hvs)):
+                x, y_true = train_hvs[i], int(train_labels[i])
+                pred = int(clf.predict(x))
+                if pred == y_true:
+                    delta = lr * (x - clf.prototypes[pred])
+                else:
+                    delta = -lr * (x - clf.prototypes[pred])
+                if self.vsa_model_name != "bsc":
+                    new_p = clf.prototypes[pred] + delta
+                    new_p = new_p / (jnp.linalg.norm(new_p) + 1e-8)
+                else:
+                    new_p = F.bundle_bsc(
+                        jnp.stack([clf.prototypes[pred], (clf.prototypes[pred] + delta) > 0.5]),
+                        axis=0,
+                    )
+                clf = clf.replace(prototypes=clf.prototypes.at[pred].set(new_p))
+        return clf
+
+    @jax.jit
+    def score(self, test_hvs: jax.Array, test_labels: jax.Array) -> jax.Array:
+        preds = self.predict(test_hvs)
+        return jnp.mean(preds == test_labels)
+
+    def replace(self, **updates: Any) -> "LVQClassifier":
+        return dataclass_replace(self, **updates)
+
+
+@register_dataclass
+@dataclass
+class RegularizedLSClassifier:
+    """Regularized Least Squares classifier in HV space.
+
+    Solves (X^T X + lambda I) W = X^T Y for weights W.
+    """
+
+    weights: jax.Array  # (dimensions, num_classes)
+    dimensions: int = field(metadata=dict(static=True))
+    num_classes: int = field(metadata=dict(static=True))
+    reg: float = field(metadata=dict(static=True))
+
+    @staticmethod
+    def create(
+        dimensions: int,
+        num_classes: int,
+        reg: float = 1e-4,
+    ) -> "RegularizedLSClassifier":
+        return RegularizedLSClassifier(
+            weights=jnp.zeros((dimensions, num_classes)),
+            dimensions=dimensions,
+            num_classes=num_classes,
+            reg=reg,
+        )
+
+    def fit(self, train_hvs: jax.Array, train_labels: jax.Array) -> "RegularizedLSClassifier":
+        """Fit by solving regularized least squares."""
+        n = train_hvs.shape[0]
+        Y = jax.nn.one_hot(train_labels, self.num_classes)
+        XtX = train_hvs.T @ train_hvs + self.reg * jnp.eye(self.dimensions)
+        XtY = train_hvs.T @ Y
+        weights = jnp.linalg.solve(XtX, XtY)
+        return self.replace(weights=weights)
+
+    @jax.jit
+    def predict(self, queries: jax.Array) -> jax.Array:
+        logits = queries @ self.weights
+        return jnp.argmax(logits, axis=-1)
+
+    @jax.jit
+    def score(self, test_hvs: jax.Array, test_labels: jax.Array) -> jax.Array:
+        preds = self.predict(test_hvs)
+        return jnp.mean(preds == test_labels)
+
+    def replace(self, **updates: Any) -> "RegularizedLSClassifier":
+        return dataclass_replace(self, **updates)
+
+
 __all__ = [
     "CentroidClassifier",
     "AdaptiveHDC",
+    "LVQClassifier",
+    "RegularizedLSClassifier",
 ]

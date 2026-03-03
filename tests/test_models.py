@@ -179,6 +179,20 @@ class TestCentroidClassifier:
 
         # Prototype should have changed
         assert not jnp.allclose(updated_classifier.prototypes[1], old_prototype)
+
+    def test_update_online_bsc(self):
+        """Test online update with BSC model."""
+        classifier = CentroidClassifier.create(
+            num_classes=3, dimensions=100, vsa_model="bsc", key=jax.random.PRNGKey(42)
+        )
+
+        sample = jax.random.bernoulli(jax.random.PRNGKey(0), 0.5, (100,))
+        old_prototype = classifier.prototypes[1].copy()
+
+        updated_classifier = classifier.update_online(sample, label=1, learning_rate=0.1)
+
+        assert not jnp.allclose(updated_classifier.prototypes[1], old_prototype)
+        assert updated_classifier.prototypes.dtype == jnp.bool_
         # Other prototypes should be unchanged
         assert jnp.allclose(updated_classifier.prototypes[0], classifier.prototypes[0])
         assert jnp.allclose(updated_classifier.prototypes[2], classifier.prototypes[2])
@@ -387,3 +401,18 @@ class TestAdaptiveHDC:
 
         # True class prototype should have changed
         assert not jnp.allclose(updated_classifier.prototypes[1], old_prototype)
+
+    def test_fit_with_bsc(self):
+        """Test AdaptiveHDC fit with BSC model."""
+        vsa = BSC.create(dimensions=100)
+        classifier = AdaptiveHDC.create(
+            num_classes=3, dimensions=100, vsa_model=vsa, key=jax.random.PRNGKey(42)
+        )
+
+        train_hvs = vsa.random(jax.random.PRNGKey(0), (30, 100))
+        train_labels = jnp.array([0] * 10 + [1] * 10 + [2] * 10)
+
+        trained_classifier = classifier.fit(train_hvs, train_labels, epochs=2)
+
+        assert trained_classifier.prototypes.shape == (3, 100)
+        assert trained_classifier.prototypes.dtype == jnp.bool_

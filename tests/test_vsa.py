@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from jax_hdc.vsa import BSC, FHRR, HRR, MAP, create_vsa_model
+from jax_hdc.vsa import BSBC, BSC, FHRR, HRR, MAP, create_vsa_model
 
 
 class TestVSAModels:
@@ -38,9 +38,18 @@ class TestVSAModels:
         assert model.name == "fhrr"
         assert model.dimensions == 10000
 
+    def test_create_bsbc(self):
+        """Test BSBC model creation."""
+        model = BSBC.create(dimensions=1000, block_size=100, k_active=5)
+
+        assert model.name == "bsbc"
+        assert model.dimensions == 1000
+        assert model.block_size == 100
+        assert model.k_active == 5
+
     def test_factory_function(self):
         """Test create_vsa_model factory function."""
-        for model_type in ["bsc", "map", "hrr", "fhrr"]:
+        for model_type in ["bsc", "map", "hrr", "fhrr", "bsbc"]:
             model = create_vsa_model(model_type, dimensions=10000)
             assert model.name == model_type
             assert model.dimensions == 10000
@@ -49,6 +58,41 @@ class TestVSAModels:
         """Test that invalid model type raises error."""
         with pytest.raises(ValueError):
             create_vsa_model("invalid_model", dimensions=10000)
+
+
+class TestBSBCModel:
+    """Test BSBC model operations."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.model = BSBC.create(dimensions=1000, block_size=100, k_active=5)
+        self.key = jax.random.PRNGKey(42)
+
+    def test_random_generation(self):
+        """Test random block-sparse hypervector generation."""
+        x = self.model.random(self.key, (1000,))
+
+        assert x.shape == (1000,)
+        assert x.dtype == jnp.bool_
+        num_blocks = 1000 // 100
+        expected_ones = num_blocks * 5
+        assert jnp.sum(x) == expected_ones
+
+    def test_bind_operation(self):
+        """Test binding (XOR) operation."""
+        x = self.model.random(self.key, (1000,))
+        y = self.model.random(jax.random.split(self.key)[1], (1000,))
+
+        bound = self.model.bind(x, y)
+
+        assert bound.shape == (1000,)
+        assert bound.dtype == jnp.bool_
+
+    def test_similarity(self):
+        """Test similarity computation."""
+        x = self.model.random(self.key, (1000,))
+        sim_self = self.model.similarity(x, x)
+        assert jnp.allclose(sim_self, 1.0)
 
 
 class TestBSCModel:

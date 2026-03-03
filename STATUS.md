@@ -2,7 +2,7 @@
 
 **Version**: 0.1.0-alpha
 **Status**: Alpha - Core functionality implemented, API subject to change
-**Last Updated**: 2024-11-03
+**Last Updated**: 2025-03-03
 
 ## Overview
 
@@ -44,18 +44,20 @@ Three reference implementations:
 - `examples/classification_simple.py` - End-to-end classification
 
 ### Testing ✓
-Test coverage for critical paths:
+Test coverage for critical paths (~91% coverage):
 - Functional operations (bind, bundle, permute, similarity)
 - VSA models (all four implementations)
+- Encoders (RandomEncoder, LevelEncoder, ProjectionEncoder)
+- Classifiers (CentroidClassifier, AdaptiveHDC)
+- Utils (device, memory, benchmarking)
 - Property verification (commutativity, invertibility, etc.)
+- Performance regression tests (centroid, adaptive)
 
 ## What's Not Ready Yet
 
 ### Missing Tests
-- [ ] Encoder tests
-- [ ] Classifier tests
-- [ ] Integration tests
-- [ ] Performance benchmarks
+- [ ] Integration tests (end-to-end pipeline)
+- [ ] Formal performance benchmark suite vs NumPy/TorchHD
 
 ### Missing Documentation
 - [ ] ReadTheDocs site (structure exists, not hosted)
@@ -81,7 +83,7 @@ Test coverage for critical paths:
 2. **Documentation**: ReadTheDocs not configured/hosted
 3. **Performance**: No formal benchmarks, claims are predictions
 4. **API Stability**: Breaking changes possible in alpha
-5. **Test Coverage**: Incomplete (core operations covered, encoders/models not)
+5. **Test Coverage**: ~91% (encoders, models, utils covered; integration tests pending)
 
 ## Verified Claims
 
@@ -89,12 +91,12 @@ Test coverage for critical paths:
 ✓ **JAX compatibility**: Works with jit, vmap (pmap not tested)
 ✓ **Four VSA models**: BSC, MAP, HRR, FHRR implemented
 ✓ **Examples run**: All three examples execute successfully
-✓ **Tests pass**: Core operations and VSA models tested
+✓ **Tests pass**: Core operations, VSA models, encoders, classifiers tested (129 tests)
 
 ## Unverified Claims
 
 ⚠ **"10-100x speedups"**: Not benchmarked, predicted based on JAX characteristics
-⚠ **"Comprehensive test coverage"**: Only partial coverage
+⚠ **"Comprehensive test coverage"**: ~91% coverage; integration tests pending
 ⚠ **"Property-based verification"**: Standard unit tests, not property-based
 ⚠ **GPU/TPU performance**: Not formally benchmarked
 ⚠ **pmap compatibility**: Not tested
@@ -138,8 +140,8 @@ Modules likely stable:
 ## How to Help
 
 High priority contributions:
-1. Test coverage for encoders and classifiers
-2. Performance benchmarking suite
+1. Integration tests (end-to-end pipeline)
+2. Formal performance benchmarking suite vs NumPy/TorchHD
 3. ReadTheDocs configuration
 4. GitHub Actions CI verification
 5. Documentation improvements

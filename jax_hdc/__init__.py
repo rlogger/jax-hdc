@@ -6,10 +6,16 @@ and Vector Symbolic Architectures (VSA) using JAX for hardware acceleration.
 
 __version__ = "0.1.0-alpha"
 
-from jax_hdc import embeddings, functional, models, utils, vsa
+from jax_hdc import embeddings, functional, memory, models, utils, vsa
 
 # Embeddings
-from jax_hdc.embeddings import LevelEncoder, ProjectionEncoder, RandomEncoder
+from jax_hdc.embeddings import (
+    GraphEncoder,
+    KernelEncoder,
+    LevelEncoder,
+    ProjectionEncoder,
+    RandomEncoder,
+)
 
 # Core functional operations
 from jax_hdc.functional import (  # BSC operations; MAP operations; Universal operations
@@ -26,10 +32,10 @@ from jax_hdc.functional import (  # BSC operations; MAP operations; Universal op
 )
 
 # Models
-from jax_hdc.models import AdaptiveHDC, CentroidClassifier
+from jax_hdc.models import AdaptiveHDC, CentroidClassifier, LVQClassifier, RegularizedLSClassifier
 
 # VSA models
-from jax_hdc.vsa import BSC, FHRR, HRR, MAP
+from jax_hdc.vsa import BSBC, BSC, FHRR, HRR, MAP
 
 __all__ = [
     # Modules
@@ -51,6 +57,7 @@ __all__ = [
     "cleanup",
     # VSA models
     "BSC",
+    "BSBC",
     "MAP",
     "HRR",
     "FHRR",
@@ -58,7 +65,11 @@ __all__ = [
     "RandomEncoder",
     "LevelEncoder",
     "ProjectionEncoder",
+    "KernelEncoder",
+    "GraphEncoder",
     # Models
     "CentroidClassifier",
     "AdaptiveHDC",
+    "LVQClassifier",
+    "RegularizedLSClassifier",
 ]

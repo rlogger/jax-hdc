@@ -364,6 +364,100 @@ class FHRR(VSAModel):
         return jnp.exp(1j * phases)
 
 
+@register_dataclass
+@dataclass
+class BSBC(VSAModel):
+    """Binary Sparse Block Codes (B-SBC) model.
+
+    B-SBC uses block-sparse binary hypervectors. Each block has exactly
+    k_active ones; binding and bundling match BSC (XOR, majority).
+
+    Properties:
+        - Sparse: Few ones per block (biological plausibility)
+        - Binding: XOR (element-wise)
+        - Bundling: Majority rule
+        - Same operations as BSC, different random distribution
+    """
+
+    block_size: int = field(metadata=dict(static=True), default=100)
+    k_active: int = field(metadata=dict(static=True), default=5)
+
+    @staticmethod
+    def create(
+        dimensions: int = 10000,
+        block_size: int = 100,
+        k_active: int = 5,
+    ) -> "BSBC":
+        """Create a B-SBC model.
+
+        Args:
+            dimensions: Total dimensionality (must be divisible by block_size)
+            block_size: Size of each block
+            k_active: Number of ones per block (sparsity)
+
+        Returns:
+            Initialized BSBC model
+        """
+        if dimensions % block_size != 0:
+            raise ValueError(
+                f"dimensions ({dimensions}) must be divisible by block_size ({block_size})"
+            )
+        if k_active > block_size or k_active < 1:
+            raise ValueError(f"k_active must be in [1, block_size], got {k_active}")
+        return BSBC(
+            name="bsbc",
+            dimensions=dimensions,
+            block_size=block_size,
+            k_active=k_active,
+        )
+
+    @jax.jit
+    def bind(self, x: jax.Array, y: jax.Array) -> jax.Array:
+        """Bind using XOR (same as BSC)."""
+        return F.bind_bsc(x, y)
+
+    def bundle(self, vectors: jax.Array, axis: int = 0) -> jax.Array:
+        """Bundle using majority rule."""
+        return F.bundle_bsc(vectors, axis=axis)
+
+    @jax.jit
+    def inverse(self, x: jax.Array) -> jax.Array:
+        """Inverse is identity for XOR."""
+        return F.inverse_bsc(x)
+
+    @jax.jit
+    def similarity(self, x: jax.Array, y: jax.Array) -> jax.Array:
+        """Compute Hamming similarity."""
+        return F.hamming_similarity(x, y)
+
+    def random(self, key: jax.Array, shape: tuple) -> jax.Array:
+        """Generate random block-sparse binary hypervectors."""
+        num_blocks = self.dimensions // self.block_size
+
+        def gen_block(key_b: jax.Array) -> jax.Array:
+            perm = jax.random.permutation(key_b, self.block_size)
+            block = jnp.zeros(self.block_size, dtype=jnp.bool_)
+            return block.at[perm[: self.k_active]].set(True)
+
+        batch_size = max(1, int(jnp.prod(jnp.array(shape))) // self.dimensions)
+        keys = jax.random.split(key, batch_size * num_blocks + 1)[1:]
+        keys_per_hv = jnp.reshape(
+            jnp.stack(keys[: batch_size * num_blocks]), (batch_size, num_blocks, 2)
+        )
+
+        def make_hv(block_keys: jax.Array) -> jax.Array:
+            blocks = jax.vmap(gen_block)(block_keys)
+            return jnp.reshape(blocks, (self.dimensions,))
+
+        hvs = jax.vmap(make_hv)(keys_per_hv)
+
+        if batch_size == 1 and shape == (self.dimensions,):
+            return hvs[0]
+        if batch_size == 1 and len(shape) == 1:
+            return hvs[0]
+        return jnp.reshape(hvs, shape)
+
+
 def create_vsa_model(model_type: str = "map", dimensions: int = 10000) -> VSAModel:
     """Factory function to create VSA models.
 
@@ -384,6 +478,7 @@ def create_vsa_model(model_type: str = "map", dimensions: int = 10000) -> VSAMod
         "map": MAP,
         "hrr": HRR,
         "fhrr": FHRR,
+        "bsbc": BSBC,
     }
 
     if model_type not in models:
@@ -400,5 +495,6 @@ __all__ = [
     "MAP",
     "HRR",
     "FHRR",
+    "BSBC",
     "create_vsa_model",
 ]

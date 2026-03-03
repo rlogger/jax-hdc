@@ -4,6 +4,7 @@ This module provides various encoding strategies to transform different types
 of data (discrete features, continuous values, images) into hypervectors.
 """
 
+import math
 from dataclasses import dataclass, field
 from typing import Optional, Union
 
@@ -414,8 +415,168 @@ class ProjectionEncoder:
         return jax.vmap(self.encode)(x)
 
 
+@register_dataclass
+@dataclass
+class KernelEncoder:
+    """Encoder using RBF kernel approximation (Random Fourier Features).
+
+    Approximates the RBF kernel k(x,y) = exp(-gamma ||x-y||^2) via random
+    Fourier features, mapping input to a hypervector space that preserves
+    kernel similarity.
+
+    Properties:
+        - Approximates RBF/ Gaussian kernel
+        - Useful for non-linear decision boundaries
+        - No training required
+    """
+
+    omega: jax.Array  # Shape: (input_dim, n_features)
+    bias: jax.Array  # Shape: (n_features,)
+
+    input_dim: int = field(metadata=dict(static=True))
+    dimensions: int = field(metadata=dict(static=True))
+    gamma: float = field(metadata=dict(static=True))
+    vsa_model_name: str = field(metadata=dict(static=True), default="map")
+
+    @staticmethod
+    def create(
+        input_dim: int,
+        dimensions: int = 10000,
+        gamma: float = 1.0,
+        vsa_model: Union[str, VSAModel] = "map",
+        key: Optional[jax.Array] = None,
+    ) -> "KernelEncoder":
+        """Create a kernel encoder.
+
+        Args:
+            input_dim: Dimensionality of input data
+            dimensions: Dimensionality of output hypervectors
+            gamma: RBF kernel scale parameter (1 / 2*sigma^2)
+            vsa_model: VSA model ('map', 'hrr', 'fhrr' for real-valued)
+            key: JAX random key
+
+        Returns:
+            Initialized KernelEncoder
+        """
+        if key is None:
+            key = jax.random.PRNGKey(0)
+
+        if isinstance(vsa_model, str):
+            vsa_model_name = vsa_model
+        else:
+            vsa_model_name = vsa_model.name
+
+        # Random Fourier features: omega ~ N(0, 2*gamma I), bias ~ U(0, 2*pi)
+        key_omega, key_bias = jax.random.split(key)
+        omega = jax.random.normal(key_omega, (input_dim, dimensions)) * jnp.sqrt(2.0 * gamma)
+        bias = jax.random.uniform(key_bias, (dimensions,), minval=0.0, maxval=2.0 * math.pi)
+
+        return KernelEncoder(
+            omega=omega,
+            bias=bias,
+            input_dim=input_dim,
+            dimensions=dimensions,
+            gamma=gamma,
+            vsa_model_name=vsa_model_name,
+        )
+
+    @jax.jit
+    def encode(self, x: jax.Array) -> jax.Array:
+        """Encode input using RBF kernel approximation."""
+        proj = jnp.dot(x, self.omega) + self.bias
+        features = jnp.cos(proj) * jnp.sqrt(2.0 / self.dimensions)
+
+        if self.vsa_model_name == "bsc":
+            return features > 0
+        norm = jnp.linalg.norm(features) + 1e-8
+        return features / norm
+
+    @jax.jit
+    def encode_batch(self, x: jax.Array) -> jax.Array:
+        """Encode a batch of inputs."""
+        return jax.vmap(self.encode)(x)
+
+
+@register_dataclass
+@dataclass
+class GraphEncoder:
+    """Encoder for graph structures (nodes and edges).
+
+    Encodes a graph by assigning random hypervectors to nodes and
+    bundling bound node pairs for edges. Graph = bundle of edge HVs.
+
+    Properties:
+        - Encodes structure via binding + permutation
+        - Suitable for small/medium graphs
+    """
+
+    node_embeddings: jax.Array  # Shape: (num_nodes, dimensions)
+
+    num_nodes: int = field(metadata=dict(static=True))
+    dimensions: int = field(metadata=dict(static=True))
+    vsa_model_name: str = field(metadata=dict(static=True), default="map")
+
+    @staticmethod
+    def create(
+        num_nodes: int,
+        dimensions: int = 10000,
+        vsa_model: Union[str, VSAModel] = "map",
+        key: Optional[jax.Array] = None,
+    ) -> "GraphEncoder":
+        """Create a graph encoder.
+
+        Args:
+            num_nodes: Maximum number of nodes
+            dimensions: Hypervector dimensionality
+            vsa_model: VSA model for real-valued graphs
+            key: JAX random key
+
+        Returns:
+            Initialized GraphEncoder
+        """
+        if key is None:
+            key = jax.random.PRNGKey(0)
+
+        if isinstance(vsa_model, str):
+            vsa_model_name = vsa_model
+            vsa = create_vsa_model(vsa_model, dimensions)
+        else:
+            vsa_model_name = vsa_model.name
+            vsa = vsa_model
+
+        node_embeddings = vsa.random(key, (num_nodes, dimensions))
+
+        return GraphEncoder(
+            node_embeddings=node_embeddings,
+            num_nodes=num_nodes,
+            dimensions=dimensions,
+            vsa_model_name=vsa_model_name,
+        )
+
+    def encode_edges(self, edges: jax.Array) -> jax.Array:
+        """Encode graph as bundle of bound edge pairs.
+
+        Args:
+            edges: Array of shape (num_edges, 2) with node indices
+
+        Returns:
+            Graph hypervector of shape (dimensions,)
+        """
+        edge_hvs = []
+        for i in range(edges.shape[0]):
+            u, v = int(edges[i, 0]), int(edges[i, 1])
+            bound = F.bind_map(
+                self.node_embeddings[u],
+                F.permute(self.node_embeddings[v], 1),
+            )
+            edge_hvs.append(bound)
+        return F.bundle_map(jnp.stack(edge_hvs), axis=0)
+
+
 __all__ = [
     "RandomEncoder",
     "LevelEncoder",
     "ProjectionEncoder",
+    "KernelEncoder",
+    "GraphEncoder",
 ]

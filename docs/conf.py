@@ -5,6 +5,8 @@
 
 import os
 import sys
+
+# Add project root for autodoc
 sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------

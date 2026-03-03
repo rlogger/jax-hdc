@@ -35,9 +35,9 @@ class Colors:
 
 def print_header(text: str) -> None:
     """Print a formatted header."""
-    print(f"\n{Colors.BOLD}{Colors.BLUE}{'='*80}{Colors.END}")
+    print(f"\n{Colors.BOLD}{Colors.BLUE}{'=' * 80}{Colors.END}")
     print(f"{Colors.BOLD}{Colors.BLUE}{text:^80}{Colors.END}")
-    print(f"{Colors.BOLD}{Colors.BLUE}{'='*80}{Colors.END}\n")
+    print(f"{Colors.BOLD}{Colors.BLUE}{'=' * 80}{Colors.END}\n")
 
 
 def print_success(text: str) -> None:
@@ -258,14 +258,16 @@ def test_basic_functionality() -> bool:
         )
         features = jnp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 0])
         encoded = encoder.encode(features)
-        assert encoded.shape == (
-            1000,
-        ), f"Encoded shape should match dimensions, got {encoded.shape}"
+        assert encoded.shape == (1000,), (
+            f"Encoded shape should match dimensions, got {encoded.shape}"
+        )
 
         print_success("Encoder operations work")
 
         # Test classifier
-        classifier = CentroidClassifier.create(num_classes=3, dimensions=1000, vsa_model="map")
+        classifier = CentroidClassifier.create(
+            num_classes=3, dimensions=1000, vsa_model="map"
+        )
 
         # Create dummy training data
         train_hvs = model.random(key, (30, 1000))
@@ -328,11 +330,15 @@ def generate_report(results: Dict[str, bool]) -> None:
     print(f"  {Colors.RED}Failed: {failed}{Colors.END}")
 
     if failed == 0:
-        print(f"\n{Colors.BOLD}{Colors.GREEN}🎉 All validation checks passed!{Colors.END}")
+        print(
+            f"\n{Colors.BOLD}{Colors.GREEN}🎉 All validation checks passed!{Colors.END}"
+        )
         print(f"{Colors.GREEN}The codebase is ready for use.{Colors.END}\n")
         return True
     else:
-        print(f"\n{Colors.BOLD}{Colors.RED}❌ Some validation checks failed.{Colors.END}")
+        print(
+            f"\n{Colors.BOLD}{Colors.RED}❌ Some validation checks failed.{Colors.END}"
+        )
         print(f"{Colors.RED}Please fix the issues above.{Colors.END}\n")
         return False
 
@@ -340,11 +346,21 @@ def generate_report(results: Dict[str, bool]) -> None:
 def main() -> int:
     """Run all validation checks."""
     print(f"{Colors.BOLD}{Colors.BLUE}")
-    print("╔═══════════════════════════════════════════════════════════════════════════════╗")
-    print("║                                                                               ║")
-    print("║                    JAX-HDC CODEBASE VALIDATION SUITE                          ║")
-    print("║                                                                               ║")
-    print("╚═══════════════════════════════════════════════════════════════════════════════╝")
+    print(
+        "╔═══════════════════════════════════════════════════════════════════════════════╗"
+    )
+    print(
+        "║                                                                               ║"
+    )
+    print(
+        "║                    JAX-HDC CODEBASE VALIDATION SUITE                          ║"
+    )
+    print(
+        "║                                                                               ║"
+    )
+    print(
+        "╚═══════════════════════════════════════════════════════════════════════════════╝"
+    )
     print(f"{Colors.END}")
 
     # Run all checks

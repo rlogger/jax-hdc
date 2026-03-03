@@ -7,13 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase 2)
+- B-SBC (Binary Sparse Block Codes) VSA model
+- KernelEncoder (RBF kernel approximation via random Fourier features)
+- GraphEncoder for graph structures
+- LVQClassifier (Learning Vector Quantization)
+- RegularizedLSClassifier
+- SparseDistributedMemory and HopfieldMemory modules
+- Integration tests (end-to-end encode/train/predict)
+- Performance benchmark suite (benchmarks/benchmark_operations.py)
+- Pytest benchmark marker registration
+- cleanup() with return_similarity support (static_argnames for JIT)
+
+### Infrastructure
+- STATUS.md updated to reflect current test coverage (~94%)
+- Performance test threshold relaxed for AdaptiveHDC
+- Documentation build verified (Sphinx)
+
 ### Planned for v0.2.0-beta
-- Complete test coverage for encoders and classifiers
-- Performance benchmarking suite with reproducible methodology
-- ReadTheDocs hosting
-- GitHub Actions CI/CD
-- Additional VSA models (B-SBC, CGR, MCR, VTB)
-- Memory modules (SDM, Hopfield)
+- Additional VSA models (CGR, MCR, VTB)
+- Attention-based retrieval memory
+- ReadTheDocs hosting connection
 
 ### Planned for v1.0.0
 - PyPI package publication

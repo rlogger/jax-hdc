@@ -94,6 +94,23 @@ class TestRandomEncoder:
 
         assert jnp.allclose(encoded1, encoded2)
 
+    def test_creation_with_vsa_model_instance(self):
+        """Test RandomEncoder creation with VSAModel instance."""
+        from jax_hdc.vsa import MAP
+
+        vsa = MAP.create(dimensions=100)
+        encoder = RandomEncoder.create(
+            num_features=5,
+            num_values=10,
+            dimensions=100,
+            vsa_model=vsa,
+            key=jax.random.PRNGKey(42),
+        )
+
+        assert encoder.vsa_model_name == "map"
+        encoded = encoder.encode(jnp.array([0, 1, 2, 3, 4]))
+        assert encoded.shape == (100,)
+
 
 class TestLevelEncoder:
     """Tests for LevelEncoder."""

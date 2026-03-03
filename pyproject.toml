@@ -90,6 +90,9 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --cov=jax_hdc --cov-report=term-missing"
+markers = [
+    "benchmark: performance benchmark tests (run with -m benchmark to execute)",
+]
 
 [tool.mypy]
 python_version = "3.10"

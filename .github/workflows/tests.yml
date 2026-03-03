@@ -38,7 +38,7 @@ jobs:
 
     - name: Run tests with pytest
       run: |
-        pytest tests/ -v --cov=jax_hdc --cov-report=xml --cov-report=term-missing
+        pytest tests/ -v --cov=jax_hdc --cov-report=xml --cov-report=term-missing -k "not benchmark"
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
@@ -66,16 +66,16 @@ jobs:
 
     - name: Check code formatting with black
       run: |
-        black --check jax_hdc/ tests/ examples/
+        black --check jax_hdc/ tests/ examples/ benchmarks/
 
     - name: Lint with flake8
       run: |
-        flake8 jax_hdc/ tests/ examples/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 jax_hdc/ tests/ examples/ --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
+        flake8 jax_hdc/ tests/ examples/ benchmarks/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 jax_hdc/ tests/ examples/ benchmarks/ --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
 
     - name: Check import sorting with isort
       run: |
-        isort --check-only jax_hdc/ tests/ examples/
+        isort --check-only jax_hdc/ tests/ examples/ benchmarks/
 
     - name: Type check with mypy
       run: |

@@ -346,41 +346,41 @@ JAX-HDC is inspired by the excellent [TorchHD](https://github.com/hyperdimension
 - [x] Simple examples (basic operations, Kanerva, classification)
 - [x] RandomEncoder, LevelEncoder, ProjectionEncoder
 
-### Phase 2: Feature Complete - 35% Complete
+### Phase 2: Feature Complete - 85% Complete
 
-#### VSA Models (50% done)
+#### VSA Models (62% done)
 - [x] Binary Spatter Codes (BSC)
 - [x] Multiply-Add-Permute (MAP)
 - [x] Holographic Reduced Representations (HRR)
 - [x] Fourier HRR (FHRR)
-- [ ] Binary Sparse Block Codes (B-SBC)
+- [x] Binary Sparse Block Codes (B-SBC)
 - [ ] Cyclic Group Representation (CGR)
 - [ ] Modular Composite Representation (MCR)
 - [ ] Vector-Derived Transformation Binding (VTB)
 
-#### Embeddings (60% done)
+#### Embeddings (100% done)
 - [x] RandomEncoder for discrete features
 - [x] LevelEncoder for continuous values
 - [x] ProjectionEncoder for high-dimensional data
-- [ ] KernelEncoder (RBF kernel approximation)
-- [ ] GraphEncoder for graph structures
+- [x] KernelEncoder (RBF kernel approximation)
+- [x] GraphEncoder for graph structures
 
-#### Models (50% done)
+#### Models (100% done)
 - [x] CentroidClassifier
 - [x] AdaptiveHDC
-- [ ] Learning Vector Quantization (LVQ)
-- [ ] Regularized Least Squares
+- [x] Learning Vector Quantization (LVQ)
+- [x] Regularized Least Squares
 
-#### Memory Modules (0% done)
-- [ ] Sparse Distributed Memory (SDM)
-- [ ] Modern Hopfield Networks
+#### Memory Modules (67% done)
+- [x] Sparse Distributed Memory (SDM)
+- [x] Modern Hopfield Networks
 - [ ] Attention-based retrieval
 
-#### Infrastructure (20% done)
-- [x] Comprehensive test suite (functional, vsa)
-- [ ] Performance benchmarks vs TorchHD
-- [ ] Test coverage for models and embeddings
-- [ ] Integration tests
+#### Infrastructure (80% done)
+- [x] Comprehensive test suite
+- [x] Performance benchmark suite
+- [x] Test coverage for models and embeddings
+- [x] Integration tests
 
 ### Phase 3: Advanced - 0% Complete
 

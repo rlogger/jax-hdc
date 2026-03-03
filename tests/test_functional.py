@@ -194,6 +194,20 @@ class TestUniversalOperations:
 
         assert jnp.allclose(result, memory[0])
 
+    def test_cleanup_return_similarity(self):
+        """Test cleanup with return_similarity=True."""
+        key = jax.random.PRNGKey(42)
+
+        memory = jax.random.normal(key, shape=(3, 100))
+        memory = memory / jnp.linalg.norm(memory, axis=-1, keepdims=True)
+
+        query = memory[1].copy()
+
+        vector, similarity = F.cleanup(query, memory, return_similarity=True)
+
+        assert jnp.allclose(vector, memory[1])
+        assert jnp.allclose(similarity, 1.0, atol=1e-5)
+
 
 class TestBatchOperations:
     """Test batch operations using vmap."""
