@@ -52,6 +52,12 @@ class TestGetDevice:
 
         assert device is not None
 
+    def test_get_device_out_of_range(self):
+        """Test ValueError when device_id exceeds available devices."""
+        cpu_devices = jax.devices("cpu")
+        with pytest.raises(ValueError, match="Device ID"):
+            utils.get_device("cpu", len(cpu_devices) + 10)
+
 
 class TestGetDeviceMemoryStats:
     """Tests for get_device_memory_stats."""

@@ -4,7 +4,13 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from jax_hdc.embeddings import LevelEncoder, ProjectionEncoder, RandomEncoder
+from jax_hdc.embeddings import (
+    GraphEncoder,
+    KernelEncoder,
+    LevelEncoder,
+    ProjectionEncoder,
+    RandomEncoder,
+)
 
 
 class TestRandomEncoder:
@@ -338,3 +344,87 @@ class TestProjectionEncoder:
         col_norms = jnp.linalg.norm(encoder.projection_matrix, axis=0)
         # All column norms should be similar due to normalization
         assert jnp.std(col_norms) < 0.5
+
+
+class TestKernelEncoder:
+    """Tests for KernelEncoder."""
+
+    def test_creation_with_defaults(self):
+        """Test KernelEncoder creation."""
+        encoder = KernelEncoder.create(input_dim=20, dimensions=100, key=jax.random.PRNGKey(42))
+        assert encoder.input_dim == 20
+        assert encoder.dimensions == 100
+        assert encoder.gamma == 1.0
+        assert encoder.omega.shape == (20, 100)
+        assert encoder.bias.shape == (100,)
+
+    def test_encode_single_input(self):
+        """Test encoding a single input."""
+        encoder = KernelEncoder.create(
+            input_dim=10, dimensions=100, key=jax.random.PRNGKey(42)
+        )
+        x = jax.random.normal(jax.random.PRNGKey(0), (10,))
+        encoded = encoder.encode(x)
+        assert encoded.shape == (100,)
+        assert jnp.isfinite(encoded).all()
+
+    def test_encode_batch(self):
+        """Test batch encoding."""
+        encoder = KernelEncoder.create(
+            input_dim=10, dimensions=100, key=jax.random.PRNGKey(42)
+        )
+        x = jax.random.normal(jax.random.PRNGKey(0), (5, 10))
+        encoded = encoder.encode_batch(x)
+        assert encoded.shape == (5, 100)
+
+    def test_encode_with_bsc_produces_binary(self):
+        """Test KernelEncoder with BSC produces binary output."""
+        encoder = KernelEncoder.create(
+            input_dim=10, dimensions=100, vsa_model="bsc", key=jax.random.PRNGKey(42)
+        )
+        x = jax.random.normal(jax.random.PRNGKey(0), (10,))
+        encoded = encoder.encode(x)
+        assert encoded.dtype == jnp.bool_
+
+    def test_creation_with_vsa_model_instance(self):
+        """Test KernelEncoder creation with VSAModel instance."""
+        from jax_hdc.vsa import MAP
+
+        vsa = MAP.create(dimensions=100)
+        encoder = KernelEncoder.create(
+            input_dim=10, dimensions=100, vsa_model=vsa, key=jax.random.PRNGKey(42)
+        )
+        assert encoder.vsa_model_name == "map"
+
+
+class TestGraphEncoder:
+    """Tests for GraphEncoder."""
+
+    def test_creation_with_defaults(self):
+        """Test GraphEncoder creation."""
+        encoder = GraphEncoder.create(
+            num_nodes=10, dimensions=100, key=jax.random.PRNGKey(42)
+        )
+        assert encoder.num_nodes == 10
+        assert encoder.dimensions == 100
+        assert encoder.node_embeddings.shape == (10, 100)
+
+    def test_encode_edges(self):
+        """Test encoding graph edges."""
+        encoder = GraphEncoder.create(
+            num_nodes=5, dimensions=100, key=jax.random.PRNGKey(42)
+        )
+        edges = jnp.array([[0, 1], [1, 2], [2, 0]])
+        hv = encoder.encode_edges(edges)
+        assert hv.shape == (100,)
+        assert jnp.isfinite(hv).all()
+
+    def test_creation_with_vsa_model_instance(self):
+        """Test GraphEncoder creation with VSAModel instance."""
+        from jax_hdc.vsa import MAP
+
+        vsa = MAP.create(dimensions=100)
+        encoder = GraphEncoder.create(
+            num_nodes=5, dimensions=100, vsa_model=vsa, key=jax.random.PRNGKey(42)
+        )
+        assert encoder.vsa_model_name == "map"

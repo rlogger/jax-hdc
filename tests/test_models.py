@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from jax_hdc.models import AdaptiveHDC, CentroidClassifier
+from jax_hdc.models import AdaptiveHDC, CentroidClassifier, LVQClassifier, RegularizedLSClassifier
 from jax_hdc.vsa import BSC, MAP
 
 
@@ -416,3 +416,95 @@ class TestAdaptiveHDC:
 
         assert trained_classifier.prototypes.shape == (3, 100)
         assert trained_classifier.prototypes.dtype == jnp.bool_
+
+
+class TestLVQClassifier:
+    """Tests for LVQClassifier."""
+
+    def test_creation(self):
+        """Test LVQClassifier creation."""
+        clf = LVQClassifier.create(
+            num_classes=3, dimensions=100, key=jax.random.PRNGKey(42)
+        )
+        assert clf.prototypes.shape == (3, 100)
+        assert clf.num_classes == 3
+
+    def test_predict_single_and_batch(self):
+        """Test prediction on single and batch."""
+        clf = LVQClassifier.create(
+            num_classes=3, dimensions=100, key=jax.random.PRNGKey(42)
+        )
+        single = jax.random.normal(jax.random.PRNGKey(0), (100,))
+        batch = jax.random.normal(jax.random.PRNGKey(1), (5, 100))
+        pred_single = clf.predict(single)
+        pred_batch = clf.predict(batch)
+        assert pred_single.shape == ()
+        assert pred_batch.shape == (5,)
+
+    def test_fit_and_score(self):
+        """Test fit and score."""
+        vsa = MAP.create(dimensions=100)
+        clf = LVQClassifier.create(
+            num_classes=3, dimensions=100, vsa_model=vsa, key=jax.random.PRNGKey(42)
+        )
+        train_hvs = vsa.random(jax.random.PRNGKey(0), (30, 100))
+        train_labels = jnp.array([0] * 10 + [1] * 10 + [2] * 10)
+        clf = clf.fit(train_hvs, train_labels, epochs=2)
+        score = clf.score(train_hvs, train_labels)
+        assert 0.0 <= float(score) <= 1.0
+
+    def test_predict_with_bsc(self):
+        """Test LVQ predict with BSC model."""
+        clf = LVQClassifier.create(
+            num_classes=3, dimensions=100, vsa_model="bsc", key=jax.random.PRNGKey(42)
+        )
+        x = jax.random.bernoulli(jax.random.PRNGKey(0), 0.5, (100,))
+        pred = clf.predict(x)
+        assert 0 <= pred < 3
+
+
+
+class TestRegularizedLSClassifier:
+    """Tests for RegularizedLSClassifier."""
+
+    def test_creation(self):
+        """Test RegularizedLSClassifier creation."""
+        clf = RegularizedLSClassifier.create(dimensions=100, num_classes=5)
+        assert clf.weights.shape == (100, 5)
+        assert clf.reg == 1e-4
+
+    def test_creation_custom_reg(self):
+        """Test creation with custom regularization."""
+        clf = RegularizedLSClassifier.create(
+            dimensions=50, num_classes=4, reg=0.01
+        )
+        assert clf.reg == 0.01
+
+    def test_fit_and_predict(self):
+        """Test fit and predict."""
+        clf = RegularizedLSClassifier.create(dimensions=100, num_classes=3)
+        train_hvs = jax.random.normal(jax.random.PRNGKey(42), (50, 100))
+        train_labels = jnp.array([0] * 17 + [1] * 17 + [2] * 16)
+        clf = clf.fit(train_hvs, train_labels)
+        preds = clf.predict(train_hvs[:5])
+        assert preds.shape == (5,)
+
+    def test_score(self):
+        """Test score computation."""
+        clf = RegularizedLSClassifier.create(dimensions=100, num_classes=3)
+        train_hvs = jax.random.normal(jax.random.PRNGKey(42), (60, 100))
+        train_labels = jnp.array([i % 3 for i in range(60)])
+        clf = clf.fit(train_hvs, train_labels)
+        score = clf.score(train_hvs, train_labels)
+        assert 0.0 <= float(score) <= 1.0
+
+    def test_predict_single_query(self):
+        """Test predict with single query (1D input)."""
+        clf = RegularizedLSClassifier.create(dimensions=50, num_classes=4)
+        train_hvs = jax.random.normal(jax.random.PRNGKey(42), (40, 50))
+        train_labels = jnp.array([i % 4 for i in range(40)])
+        clf = clf.fit(train_hvs, train_labels)
+        single = jax.random.normal(jax.random.PRNGKey(0), (50,))
+        pred = clf.predict(single)
+        assert pred.shape == ()
+        assert 0 <= int(pred) < 4
