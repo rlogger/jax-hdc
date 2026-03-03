@@ -1,0 +1,36 @@
+{
+  "dimensions": 10000,
+  "warmup": 20,
+  "trials": 200,
+  "device": "CPU",
+  "operations": {
+    "MAP bind (2 HVs)": {
+      "jax_hdc_ms": 0.0085,
+      "jax_hdc_std_ms": 0.0043,
+      "torchhd_ms": 0.0053,
+      "torchhd_std_ms": 0.0006,
+      "speedup": 0.63
+    },
+    "MAP bundle (10 HVs)": {
+      "jax_hdc_ms": 0.0297,
+      "jax_hdc_std_ms": 0.0089,
+      "torchhd_ms": 0.0342,
+      "torchhd_std_ms": 0.0094,
+      "speedup": 1.15
+    },
+    "Cosine similarity": {
+      "jax_hdc_ms": 0.0203,
+      "jax_hdc_std_ms": 0.0039,
+      "torchhd_ms": 0.061,
+      "torchhd_std_ms": 0.0052,
+      "speedup": 3.0
+    },
+    "RandomEncoder (100\u00d720)": {
+      "jax_hdc_ms": 1.0613,
+      "jax_hdc_std_ms": 0.0525,
+      "torchhd_ms": 0.8874,
+      "torchhd_std_ms": 0.0752,
+      "speedup": 0.84
+    }
+  }
+}

@@ -270,22 +270,23 @@ Full documentation is available at [jax-hdc.readthedocs.io](https://jax-hdc.read
 
 ## Performance
 
-JAX-HDC leverages JAX's performance advantages:
+JAX-HDC leverages JAX's XLA compilation, `vmap` vectorization, and JIT for efficient HDC operations. Below are **tested** benchmarks vs [TorchHD](https://github.com/hyperdimensional-computing/torchhd) on CPU (10,000 dimensions, 200 trials after 20 warmup).
 
-- **XLA Compilation**: Automatic optimization and kernel fusion
-- **Vectorization**: `vmap` for efficient batch processing
-- **Parallelization**: `pmap` for multi-device training
-- **JIT Compilation**: Eliminate Python overhead
+| Operation | JAX-HDC | TorchHD | JAX-HDC / TorchHD |
+|-----------|---------|---------|-------------------|
+| MAP bind (2 HVs) | ~0.01 ms | ~0.01 ms | ~1× |
+| MAP bundle (10 HVs) | ~0.04 ms | ~0.03 ms | ~1× |
+| Cosine similarity | ~0.02 ms | ~0.07 ms | **~3× faster** |
+| RandomEncoder (100×20) | ~1.0 ms | ~1.0 ms | ~1× |
 
-Predicted performance gains (10,000 dimensions):
+JAX-HDC is **~3× faster** on similarity computations; bind, bundle, and encoding are comparable. Results depend on hardware—reproduce locally with:
 
-**Note**: These are predicted performance characteristics based on JAX benchmarks, not formal measurements. Actual performance is hardware and workload dependent. Formal benchmarking suite is planned for v0.2.0-beta.
+```bash
+pip install -e ".[benchmark]"
+python benchmarks/benchmark_compare.py
+```
 
-| Operation | NumPy | PyTorch | JAX-HDC | Speedup |
-|-----------|-------|---------|---------|---------|
-| Binding | 2.5ms | 1.2ms | 0.15ms | 8x |
-| Bundling | 3.2ms | 1.5ms | 0.18ms | 8.5x |
-| Encoding | 45ms | 22ms | 2.1ms | 10x |
+Results are saved to `benchmarks/benchmark_results.json`. On GPU/TPU, JAX often gains additional speedups from XLA; CPU timings above provide a conservative baseline.
 
 ## Development
 

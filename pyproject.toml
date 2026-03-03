@@ -63,6 +63,10 @@ examples = [
     "scikit-learn>=1.0.0",
     "tqdm>=4.62.0",
 ]
+benchmark = [
+    "torch>=2.0.0",
+    "torch-hd>=5.0.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/rlogger/jax-hdc"

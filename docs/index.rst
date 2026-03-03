@@ -6,7 +6,7 @@ JAX-HDC is a high-performance library for Hyperdimensional Computing (HDC) and V
 Features
 --------
 
-- XLA compilation and automatic kernel fusion for 10-100x speedups
+- XLA compilation and automatic kernel fusion
 - Native GPU/TPU support through JAX backend
 - Pure functional design enabling JAX transformations (jit, vmap, grad, pmap)
 - Four VSA model implementations: BSC, MAP, HRR, FHRR
