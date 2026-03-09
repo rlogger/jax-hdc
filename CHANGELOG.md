@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Integration tests (end-to-end encode/train/predict)
 - Performance benchmark suite
 - `cleanup()` with `return_similarity` support
+- Metrics module (`jax_hdc/metrics.py`)
 
 ### Changed
 - Replaced `black`/`isort`/`flake8` with `ruff` for linting and formatting
