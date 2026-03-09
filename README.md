@@ -1,34 +1,26 @@
 <p align="center">
     <a href="https://github.com/rlogger/jax-hdc/blob/main/LICENSE"><img alt="GitHub license" src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat" /></a>
     <img alt="Development Status" src="https://img.shields.io/badge/status-alpha-orange.svg?style=flat" />
-    <img alt="Version" src="https://img.shields.io/badge/version-0.1.0--alpha-blue.svg?style=flat" />
     <img alt="Python" src="https://img.shields.io/badge/python-3.9%2B-blue.svg?style=flat" />
-    <img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat" />
 </p>
 
 # JAX-HDC
 
 **A high-performance JAX library for Hyperdimensional Computing and Vector Symbolic Architectures**
 
-JAX-HDC is a Python library for _Hyperdimensional Computing_ (HDC) and _Vector Symbolic Architectures_ (VSA) built on JAX. The library leverages JAX's XLA compilation, automatic vectorization, and hardware acceleration to provide efficient HDC implementations with a functional programming interface.
-
-**Development Status**: Alpha 
+JAX-HDC provides efficient implementations of Hyperdimensional Computing (HDC) and Vector Symbolic Architectures (VSA) using JAX. The library leverages XLA compilation, automatic vectorization, and hardware acceleration with a functional programming interface.
 
 ## Features
 
 - XLA compilation and automatic kernel fusion through JAX
-- Native GPU/TPU support through JAX backend
-- Functional design compatible with JAX transformations (jit, vmap, pmap)
-- Four VSA model implementations: BSC, MAP, HRR, FHRR
-- Feature encoders for discrete, continuous, and high-dimensional data
-- Classification models including centroid-based and adaptive methods
-- Test coverage for core operations and models
+- Native GPU/TPU support
+- Functional design compatible with JAX transformations (`jit`, `vmap`, `pmap`)
+- Eight VSA models: BSC, MAP, HRR, FHRR, BSBC, CGR, MCR, VTB
+- Encoders for discrete, continuous, kernel, and graph data
+- Classification models: centroid, adaptive, LVQ, regularized least squares
+- Memory modules: SDM, Hopfield networks, attention-based retrieval
 
 ## Installation
-
-**Note**: JAX-HDC is currently in alpha development and not yet published to PyPI.
-
-### From source
 
 ```bash
 git clone https://github.com/rlogger/jax-hdc.git
@@ -36,378 +28,110 @@ cd jax-hdc
 pip install -e .
 ```
 
-This installs the package in development mode with core dependencies (jax, jaxlib, numpy, optax).
-
-### Using Nix/NixOS
-
-JAX-HDC supports Nix for reproducible dependency management. This is particularly useful for NixOS users or anyone who wants declarative package management.
-
-#### With Nix Flakes (recommended)
-
-```bash
-# Clone the repository
-git clone https://github.com/rlogger/jax-hdc.git
-cd jax-hdc
-
-# Enter development shell
-nix develop
-
-# Or build the package
-nix build
-
-# Run examples directly
-nix run .#basic-operations
-nix run .#kanerva-example
-nix run .#classification-simple
-```
-
-#### With traditional Nix
-
-```bash
-# Clone the repository
-git clone https://github.com/rlogger/jax-hdc.git
-cd jax-hdc
-
-# Enter development shell
-nix-shell
-
-# Or build the package
-nix-build
-```
-
-#### With direnv (automatic environment loading)
-
-If you have [direnv](https://direnv.net/) installed:
-
-```bash
-cd jax-hdc
-direnv allow  # Automatically loads the Nix environment
-```
-
-The development environment includes all dependencies for development, testing, documentation, and running examples.
-
-### Development installation
-
-For development with testing and code quality tools:
+For development:
 
 ```bash
 pip install -e ".[dev]"
 ```
 
-### Running examples
-
-To run the examples with additional dependencies:
+### Nix
 
 ```bash
-pip install -e ".[examples]"
+nix develop   # flakes
+nix-shell     # traditional
 ```
 
 ## Quick Start
 
 ```python
 import jax
-import jax.numpy as jnp
 from jax_hdc import MAP, RandomEncoder, CentroidClassifier
 
-# Create a MAP VSA model with 10,000 dimensions
 model = MAP.create(dimensions=10000)
 key = jax.random.PRNGKey(42)
 
-# Generate random hypervectors
+# Bind and bundle
 x = model.random(key, (10000,))
 y = model.random(key, (10000,))
-
-# Bind: create dissimilar combination
 bound = model.bind(x, y)
+bundled = model.bundle(jax.numpy.stack([x, y]), axis=0)
 
-# Bundle: create similar aggregation
-vectors = model.random(key, (10, 10000))
-bundled = model.bundle(vectors, axis=0)
-
-# Compute similarity
-similarity = model.similarity(x, y)
-print(f"Similarity: {similarity:.4f}")
-
-# Classification example
+# Classification pipeline
 encoder = RandomEncoder.create(
-    num_features=20,
-    num_values=10,
-    dimensions=10000,
-    vsa_model=model,
-    key=key
+    num_features=20, num_values=10, dimensions=10000,
+    vsa_model=model, key=key,
 )
-
-# Encode data
 data = jax.random.randint(key, (100, 20), 0, 10)
 labels = jax.random.randint(key, (100,), 0, 5)
 encoded = encoder.encode_batch(data)
 
-# Train classifier
 classifier = CentroidClassifier.create(
-    num_classes=5,
-    dimensions=10000,
-    vsa_model=model
+    num_classes=5, dimensions=10000, vsa_model=model,
 )
 classifier = classifier.fit(encoded, labels)
-
-# Predict
-predictions = classifier.predict(encoded)
 accuracy = classifier.score(encoded, labels)
-print(f"Accuracy: {accuracy:.2%}")
 ```
 
-## Core Operations
+## VSA Models
 
-JAX-HDC provides three fundamental operations:
+| Model | Description |
+|-------|-------------|
+| **BSC** | Binary Spatter Codes — XOR binding, majority bundling |
+| **MAP** | Multiply-Add-Permute — element-wise multiply, normalized sum |
+| **HRR** | Holographic Reduced Representations — circular convolution |
+| **FHRR** | Fourier HRR — complex-valued, element-wise multiply |
+| **BSBC** | Binary Sparse Block Codes — block-sparse binary |
+| **CGR** | Cyclic Group Representation — modular addition binding |
+| **MCR** | Modular Composite Representation — phasor arithmetic |
+| **VTB** | Vector-Derived Transformation Binding — matrix multiplication |
 
-### 1. Binding (⊗)
-Combines two hypervectors into a dissimilar result:
+All models share the same API: `bind`, `bundle`, `inverse`, `similarity`, `random`.
 
-```python
-from jax_hdc import MAP
+## Encoders
 
-model = MAP.create(dimensions=10000)
-key = jax.random.PRNGKey(42)
+- **RandomEncoder** — discrete features via codebook lookup
+- **LevelEncoder** — continuous values via level interpolation
+- **ProjectionEncoder** — high-dimensional data via random projection
+- **KernelEncoder** — RBF kernel approximation (Random Fourier Features)
+- **GraphEncoder** — graph structures via node binding
 
-x = model.random(key, (10000,))
-y = model.random(key, (10000,))
+## Classification Models
 
-# Bind x and y
-bound = model.bind(x, y)
+- **CentroidClassifier** — single-pass centroid prototypes
+- **AdaptiveHDC** — iterative prototype refinement
+- **LVQClassifier** — Learning Vector Quantization
+- **RegularizedLSClassifier** — regularized least squares
 
-# Unbind using inverse
-y_inv = model.inverse(y)
-unbound = model.bind(bound, y_inv)  # Recovers x
-```
+## Memory Modules
 
-### 2. Bundling (⊕)
-Aggregates multiple hypervectors into a similar result:
+- **SparseDistributedMemory** — content-addressable storage (Kanerva SDM)
+- **HopfieldMemory** — modern Hopfield network with softmax attention
+- **AttentionMemory** — scaled dot-product attention with multi-head support
 
-```python
-# Bundle multiple vectors
-vectors = model.random(key, (10, 10000))
-bundled = model.bundle(vectors, axis=0)
+## Development
 
-# Bundled vector is similar to all inputs
-for v in vectors:
-    sim = model.similarity(bundled, v)
-    print(f"Similarity: {sim:.4f}")  # High similarity
-```
-
-### 3. Permutation (ρ)
-Reorders elements to encode sequences:
-
-```python
-from jax_hdc.functional import permute
-
-# Encode sequence [A, B, C]
-a, b, c = model.random(key, (3, 10000))
-sequence = permute(a, 2) + permute(b, 1) + c
-```
-
-## Supported VSA Models
-
-JAX-HDC implements multiple Vector Symbolic Architecture models:
-
-| Model | Description | Use Case |
-|-------|-------------|----------|
-| **BSC** | Binary Spatter Codes | Memory efficient, fast bitwise ops |
-| **MAP** | Multiply-Add-Permute | Gradient-friendly, smooth optimization |
-| **HRR** | Holographic Reduced Representations | Circular convolution, theoretically grounded |
-| **FHRR** | Fourier HRR | Complex-valued, efficient binding |
-
-```python
-from jax_hdc import BSC, MAP, HRR, FHRR
-
-# Create different models
-bsc = BSC.create(dimensions=10000)
-map_model = MAP.create(dimensions=10000)
-hrr = HRR.create(dimensions=10000)
-fhrr = FHRR.create(dimensions=10000)
-
-# All models share the same API
-x = bsc.random(key, (10000,))
-y = bsc.random(key, (10000,))
-bound = bsc.bind(x, y)
-sim = bsc.similarity(x, y)
+```bash
+pytest tests/ -v                              # run tests
+pytest tests/ --cov=jax_hdc --cov-report=html # with coverage
+ruff check jax_hdc/                           # lint
+ruff format jax_hdc/                          # format
+mypy jax_hdc/                                 # type check
 ```
 
 ## Examples
 
-The `examples/` directory contains reference implementations:
-
-### Basic Operations
 ```bash
-python examples/basic_operations.py
+python examples/basic_operations.py      # core HDC operations
+python examples/kanerva_example.py       # analogical reasoning
+python examples/classification_simple.py # classification pipeline
 ```
-Core HDC operations: binding, bundling, permutation, and similarity computation.
-
-### Kanerva's "Dollar of Mexico"
-```bash
-python examples/kanerva_example.py
-```
-Structured knowledge representation and analogical reasoning.
-
-Paper: [What's the Dollar of Mexico?](https://redwood.berkeley.edu/wp-content/uploads/2020/05/kanerva2010what.pdf) (Kanerva, 2010)
-
-### Classification
-```bash
-python examples/classification_simple.py
-```
-End-to-end classification pipeline with feature encoding and model training.
-
-## Documentation
-
-Full documentation is available at [jax-hdc.readthedocs.io](https://jax-hdc.readthedocs.io).
-
-### API Reference
-
-- [`jax_hdc.functional`](https://jax-hdc.readthedocs.io/en/stable/functional.html) - Core operations
-- [`jax_hdc.vsa`](https://jax-hdc.readthedocs.io/en/stable/vsa.html) - VSA model implementations
-- [`jax_hdc.embeddings`](https://jax-hdc.readthedocs.io/en/stable/embeddings.html) - Feature encoders
-- [`jax_hdc.models`](https://jax-hdc.readthedocs.io/en/stable/models.html) - Classification models
-- [`jax_hdc.utils`](https://jax-hdc.readthedocs.io/en/stable/utils.html) - Utility functions
-
-## Performance
-
-JAX-HDC leverages JAX's XLA compilation, `vmap` vectorization, and JIT for efficient HDC operations. Below are **tested** benchmarks vs [TorchHD](https://github.com/hyperdimensional-computing/torchhd) on CPU (10,000 dimensions, 200 trials after 20 warmup).
-
-| Operation | JAX-HDC | TorchHD | JAX-HDC / TorchHD |
-|-----------|---------|---------|-------------------|
-| MAP bind (2 HVs) | ~0.01 ms | ~0.01 ms | ~1× |
-| MAP bundle (10 HVs) | ~0.04 ms | ~0.03 ms | ~1× |
-| Cosine similarity | ~0.02 ms | ~0.07 ms | **~3× faster** |
-| RandomEncoder (100×20) | ~1.0 ms | ~1.0 ms | ~1× |
-
-JAX-HDC is **~3× faster** on similarity computations; bind, bundle, and encoding are comparable. Results depend on hardware—reproduce locally with:
-
-```bash
-pip install -e ".[benchmark]"
-python benchmarks/benchmark_compare.py
-```
-
-Results are saved to `benchmarks/benchmark_results.json`. On GPU/TPU, JAX often gains additional speedups from XLA; CPU timings above provide a conservative baseline.
-
-## Development
-
-### Running Tests
-
-```bash
-pytest tests/ -v
-```
-
-With coverage:
-
-```bash
-pytest tests/ --cov=jax_hdc --cov-report=html
-```
-
-### Code Style
-
-```bash
-black jax_hdc/
-isort jax_hdc/
-flake8 jax_hdc/
-```
-
-### Type Checking
-
-```bash
-mypy jax_hdc/
-```
-
-## Contributing
-
-Contributions are accepted via Pull Requests. For major changes, open an issue first to discuss the proposed modifications.
-
-### Areas for Contribution
-
-- Additional VSA models (B-SBC, CGR, MCR, VTB)
-- Memory modules (Sparse Distributed Memory, Hopfield networks)
-- Additional encoders (kernel approximation, graph encoders)
-- Benchmark datasets
-- Performance optimizations
-- Documentation improvements
-
-## Acknowledgments
-
-JAX-HDC is inspired by the excellent [TorchHD](https://github.com/hyperdimensional-computing/torchhd) library. We thank the TorchHD authors for their foundational work in creating accessible HDC tools.
-
-## Development Roadmap
-
-### Phase 1: MVP - 100% Complete
-
-- [x] Core functional operations (bind, bundle, permute, similarity)
-- [x] BSC and MAP VSA models
-- [x] HRR and FHRR VSA models
-- [x] Random hypervector generation
-- [x] Basic centroid classifier
-- [x] Adaptive HDC classifier
-- [x] Unit tests and documentation
-- [x] Simple examples (basic operations, Kanerva, classification)
-- [x] RandomEncoder, LevelEncoder, ProjectionEncoder
-
-### Phase 2: Feature Complete - 85% Complete
-
-#### VSA Models (62% done)
-- [x] Binary Spatter Codes (BSC)
-- [x] Multiply-Add-Permute (MAP)
-- [x] Holographic Reduced Representations (HRR)
-- [x] Fourier HRR (FHRR)
-- [x] Binary Sparse Block Codes (B-SBC)
-- [ ] Cyclic Group Representation (CGR)
-- [ ] Modular Composite Representation (MCR)
-- [ ] Vector-Derived Transformation Binding (VTB)
-
-#### Embeddings (100% done)
-- [x] RandomEncoder for discrete features
-- [x] LevelEncoder for continuous values
-- [x] ProjectionEncoder for high-dimensional data
-- [x] KernelEncoder (RBF kernel approximation)
-- [x] GraphEncoder for graph structures
-
-#### Models (100% done)
-- [x] CentroidClassifier
-- [x] AdaptiveHDC
-- [x] Learning Vector Quantization (LVQ)
-- [x] Regularized Least Squares
-
-#### Memory Modules (67% done)
-- [x] Sparse Distributed Memory (SDM)
-- [x] Modern Hopfield Networks
-- [ ] Attention-based retrieval
-
-#### Infrastructure (80% done)
-- [x] Comprehensive test suite
-- [x] Performance benchmark suite
-- [x] Test coverage for models and embeddings
-- [x] Integration tests
-
-### Phase 3: Advanced - 0% Complete
-
-- [ ] Distributed training support (pmap, sharding)
-- [ ] Mixed precision training (BF16/FP16)
-- [ ] Custom XLA kernels for critical operations
-- [ ] Integration with Flax/Optax for neural-HDC hybrids
-- [ ] Extended documentation and tutorials
-- [ ] Community building and PyPI release
-- [ ] GitHub Actions CI/CD pipeline
-- [ ] ReadTheDocs integration
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).
 
 ## References
 
 - Kanerva, P. (2009). "Hyperdimensional Computing: An Introduction to Computing in Distributed Representation with High-Dimensional Random Vectors"
 - Plate, T. A. (1995). "Holographic Reduced Representations"
 - Gayler, R. W. (2003). "Vector Symbolic Architectures answer Jackendoff's challenges for cognitive neuroscience"
-- TorchHD: https://github.com/hyperdimensional-computing/torchhd
-
-## Links
-
-- Documentation: https://jax-hdc.readthedocs.io
-- Source Code: https://github.com/rlogger/jax-hdc
-- Issue Tracker: https://github.com/rlogger/jax-hdc/issues
-- PyPI: https://pypi.org/project/jax-hdc/

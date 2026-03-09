@@ -12,9 +12,6 @@ license = {text = "MIT"}
 authors = [
     {name = "Rajdeep Singh"},
 ]
-maintainers = [
-    {name = "JAX-HDC Contributors"},
-]
 keywords = [
     "hyperdimensional computing",
     "vector symbolic architectures",
@@ -22,7 +19,6 @@ keywords = [
     "VSA",
     "JAX",
     "machine learning",
-    "neural networks",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -34,23 +30,20 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
     "jax>=0.4.20",
     "jaxlib>=0.4.20",
-    "numpy>=1.22.0",
-    "optax>=0.1.7",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
-    "black>=23.0",
-    "flake8>=6.0",
+    "ruff>=0.4.0",
     "mypy>=1.0",
-    "isort>=5.12",
 ]
 docs = [
     "sphinx>=4.0.0",
@@ -78,15 +71,15 @@ Repository = "https://github.com/rlogger/jax-hdc"
 where = ["."]
 include = ["jax_hdc*"]
 
-[tool.black]
+[tool.ruff]
 line-length = 100
-target-version = ['py39', 'py310', 'py311']
-include = '\.pyi?$'
+target-version = "py39"
 
-[tool.isort]
-profile = "black"
-line_length = 100
-multi_line_output = 3
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["jax_hdc"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -100,18 +93,13 @@ markers = [
 
 [tool.mypy]
 python_version = "3.10"
-warn_return_any = false  # JAX functions often return Any
+warn_return_any = false
 warn_unused_configs = true
 warn_redundant_casts = true
-warn_unused_ignores = true
 strict_equality = true
 check_untyped_defs = true
-disallow_any_generics = false
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
-disallow_untyped_calls = false
 no_implicit_optional = true
-warn_unreachable = false  # Can have false positives
 show_error_codes = true
-# Allow untyped calls and missing imports for JAX
 ignore_missing_imports = true

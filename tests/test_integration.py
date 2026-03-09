@@ -1,8 +1,6 @@
 """Integration tests: end-to-end encode -> train -> predict pipeline."""
 
 import jax
-import jax.numpy as jnp
-import pytest
 
 from jax_hdc import BSC, MAP
 from jax_hdc.embeddings import LevelEncoder, ProjectionEncoder, RandomEncoder

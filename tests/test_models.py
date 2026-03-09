@@ -303,9 +303,7 @@ class TestAdaptiveHDC:
 
     def test_fit_raises_on_empty_training_data(self):
         """Test that fit raises ValueError on empty training data."""
-        classifier = AdaptiveHDC.create(
-            num_classes=3, dimensions=100, key=jax.random.PRNGKey(42)
-        )
+        classifier = AdaptiveHDC.create(num_classes=3, dimensions=100, key=jax.random.PRNGKey(42))
         empty_hvs = jnp.zeros((0, 100))
         empty_labels = jnp.array([], dtype=jnp.int32)
         with pytest.raises(ValueError, match="training data is empty"):
@@ -443,17 +441,13 @@ class TestLVQClassifier:
 
     def test_creation(self):
         """Test LVQClassifier creation."""
-        clf = LVQClassifier.create(
-            num_classes=3, dimensions=100, key=jax.random.PRNGKey(42)
-        )
+        clf = LVQClassifier.create(num_classes=3, dimensions=100, key=jax.random.PRNGKey(42))
         assert clf.prototypes.shape == (3, 100)
         assert clf.num_classes == 3
 
     def test_predict_single_and_batch(self):
         """Test prediction on single and batch."""
-        clf = LVQClassifier.create(
-            num_classes=3, dimensions=100, key=jax.random.PRNGKey(42)
-        )
+        clf = LVQClassifier.create(num_classes=3, dimensions=100, key=jax.random.PRNGKey(42))
         single = jax.random.normal(jax.random.PRNGKey(0), (100,))
         batch = jax.random.normal(jax.random.PRNGKey(1), (5, 100))
         pred_single = clf.predict(single)
@@ -463,9 +457,7 @@ class TestLVQClassifier:
 
     def test_fit_raises_on_empty_training_data(self):
         """Test that fit raises ValueError on empty training data."""
-        clf = LVQClassifier.create(
-            num_classes=3, dimensions=100, key=jax.random.PRNGKey(42)
-        )
+        clf = LVQClassifier.create(num_classes=3, dimensions=100, key=jax.random.PRNGKey(42))
         empty_hvs = jnp.zeros((0, 100))
         empty_labels = jnp.array([], dtype=jnp.int32)
         with pytest.raises(ValueError, match="training data is empty"):
@@ -493,7 +485,6 @@ class TestLVQClassifier:
         assert 0 <= pred < 3
 
 
-
 class TestRegularizedLSClassifier:
     """Tests for RegularizedLSClassifier."""
 
@@ -505,9 +496,7 @@ class TestRegularizedLSClassifier:
 
     def test_creation_custom_reg(self):
         """Test creation with custom regularization."""
-        clf = RegularizedLSClassifier.create(
-            dimensions=50, num_classes=4, reg=0.01
-        )
+        clf = RegularizedLSClassifier.create(dimensions=50, num_classes=4, reg=0.01)
         assert clf.reg == 0.01
 
     def test_fit_raises_on_empty_training_data(self):

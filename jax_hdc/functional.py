@@ -7,16 +7,13 @@ This module provides the fundamental operations for manipulating hypervectors:
 - Similarity: Measures relatedness between hypervectors
 """
 
-from typing import Callable, Optional, Union
+import functools
+from typing import Callable, Union
 
 import jax
 import jax.numpy as jnp
 
 from jax_hdc.constants import EPS
-
-# ============================================================================
-# Binary Spatter Code (BSC) Operations
-# ============================================================================
 
 
 @jax.jit
@@ -24,7 +21,6 @@ def bind_bsc(x: jax.Array, y: jax.Array) -> jax.Array:
     """Bind two hypervectors using XOR for Binary Spatter Codes.
 
     Binding creates a new hypervector that is dissimilar to both inputs.
-    For BSC, binding is implemented as element-wise XOR.
 
     Args:
         x: Binary hypervector of shape (..., d)
@@ -32,18 +28,6 @@ def bind_bsc(x: jax.Array, y: jax.Array) -> jax.Array:
 
     Returns:
         Bound hypervector of shape (..., d), dissimilar to both x and y
-
-    Properties:
-        - Commutative: bind(x, y) = bind(y, x)
-        - Self-inverse: bind(bind(x, y), y) = x
-        - Produces dissimilar result: similarity(bind(x, y), x) ≈ 0.5
-
-    Example:
-        >>> import jax.numpy as jnp
-        >>> x = jnp.array([True, False, True, False])
-        >>> y = jnp.array([True, True, False, False])
-        >>> bind_bsc(x, y)
-        Array([False, True, True, False], dtype=bool)
     """
     return jnp.logical_xor(x, y)
 
@@ -60,21 +44,8 @@ def bundle_bsc(vectors: jax.Array, axis: int = 0) -> jax.Array:
 
     Returns:
         Bundled hypervector, similar to all inputs
-
-    Properties:
-        - Commutative: order doesn't matter
-        - Associative: can bundle in groups
-        - Result is similar to all inputs
-
-    Example:
-        >>> vectors = jnp.array([[True, False, True],
-        ...                      [True, True, False],
-        ...                      [False, True, True]])
-        >>> bundle_bsc(vectors, axis=0)
-        Array([True, True, True], dtype=bool)  # Majority at each position
     """
     counts = jnp.sum(vectors, axis=axis)
-    # Get shape along axis - use static axis value
     shape_size = vectors.shape[axis]
     threshold = shape_size / 2.0
     return counts > threshold
@@ -82,22 +53,7 @@ def bundle_bsc(vectors: jax.Array, axis: int = 0) -> jax.Array:
 
 @jax.jit
 def inverse_bsc(x: jax.Array) -> jax.Array:
-    """Compute inverse for BSC (identity since XOR is self-inverse).
-
-    For Binary Spatter Codes, the inverse is the vector itself because
-    XOR is self-inverse: x XOR y XOR y = x.
-
-    Args:
-        x: Binary hypervector of shape (..., d)
-
-    Returns:
-        Same hypervector (identity operation)
-
-    Example:
-        >>> x = jnp.array([True, False, True, False])
-        >>> inverse_bsc(x)
-        Array([True, False, True, False], dtype=bool)
-    """
+    """Compute inverse for BSC (identity since XOR is self-inverse)."""
     return x  # XOR is self-inverse
 
 
@@ -114,20 +70,9 @@ def hamming_similarity(x: jax.Array, y: jax.Array) -> jax.Array:
 
     Returns:
         Similarity score in [0, 1], where 1 is identical and 0.5 is random
-
-    Example:
-        >>> x = jnp.array([True, False, True, False])
-        >>> y = jnp.array([True, True, True, False])
-        >>> hamming_similarity(x, y)
-        Array(0.75, dtype=float32)  # 3 out of 4 match
     """
     matches = jnp.logical_not(jnp.logical_xor(x, y))
     return jnp.mean(matches.astype(jnp.float32), axis=-1)
-
-
-# ============================================================================
-# Multiply-Add-Permute (MAP) Operations
-# ============================================================================
 
 
 @jax.jit
@@ -143,17 +88,6 @@ def bind_map(x: jax.Array, y: jax.Array) -> jax.Array:
 
     Returns:
         Bound hypervector of shape (..., d)
-
-    Properties:
-        - Commutative: bind(x, y) = bind(y, x)
-        - Inverse via element-wise reciprocal
-        - Preserves unit norm if inputs are normalized
-
-    Example:
-        >>> x = jnp.array([1.0, -1.0, 0.5, -0.5])
-        >>> y = jnp.array([0.5, 0.5, -1.0, 1.0])
-        >>> bind_map(x, y)
-        Array([0.5, -0.5, -0.5, -0.5], dtype=float32)
     """
     return x * y
 
@@ -170,13 +104,6 @@ def bundle_map(vectors: jax.Array, axis: int = 0) -> jax.Array:
 
     Returns:
         Bundled and normalized hypervector
-
-    Example:
-        >>> vectors = jnp.array([[1.0, 0.0, 0.0],
-        ...                      [0.0, 1.0, 0.0],
-        ...                      [0.0, 0.0, 1.0]])
-        >>> bundle_map(vectors, axis=0)
-        Array([0.577, 0.577, 0.577], dtype=float32)  # Normalized average
     """
     summed = jnp.sum(vectors, axis=axis)
     norm = jnp.linalg.norm(summed, axis=-1, keepdims=True)
@@ -197,13 +124,7 @@ def inverse_map(x: jax.Array, eps: float = EPS) -> jax.Array:
 
     Returns:
         Inverse hypervector
-
-    Example:
-        >>> x = jnp.array([2.0, 0.5, -1.0, 4.0])
-        >>> inverse_map(x)
-        Array([0.5, 2.0, -1.0, 0.25], dtype=float32)
     """
-    # Avoid division by zero: when |x| <= eps, return 0 (no inverse for near-zero)
     safe_inv = jnp.where(jnp.abs(x) > eps, 1.0 / x, 0.0)
     return safe_inv
 
@@ -222,22 +143,10 @@ def cosine_similarity(x: jax.Array, y: jax.Array) -> jax.Array:
     Returns:
         Similarity score in [-1, 1], where 1 is identical, -1 is opposite,
         and 0 is orthogonal
-
-    Example:
-        >>> x = jnp.array([1.0, 0.0, 0.0])
-        >>> y = jnp.array([0.0, 1.0, 0.0])
-        >>> cosine_similarity(x, y)
-        Array(0., dtype=float32)  # Orthogonal vectors
     """
     x_norm = x / (jnp.linalg.norm(x, axis=-1, keepdims=True) + EPS)
     y_norm = y / (jnp.linalg.norm(y, axis=-1, keepdims=True) + EPS)
-    # Clip to handle floating point precision issues
     return jnp.clip(jnp.sum(x_norm * y_norm, axis=-1), -1.0, 1.0)
-
-
-# ============================================================================
-# Universal Operations (work with all VSA models)
-# ============================================================================
 
 
 @jax.jit
@@ -253,21 +162,11 @@ def permute(x: jax.Array, shifts: int = 1) -> jax.Array:
 
     Returns:
         Permuted hypervector of shape (..., d)
-
-    Properties:
-        - Invertible: permute(permute(x, k), -k) = x
-        - Preserves similarity structure
-        - Used for encoding sequences: [a, b, c] -> permute(a, 2) + permute(b, 1) + c
-
-    Example:
-        >>> x = jnp.array([1, 2, 3, 4, 5])
-        >>> permute(x, shifts=2)
-        Array([4, 5, 1, 2, 3], dtype=int32)
     """
     return jnp.roll(x, shifts, axis=-1)
 
 
-@jax.jit(static_argnames=("return_similarity",))
+@functools.partial(jax.jit, static_argnames=("return_similarity",))
 def cleanup(
     query: jax.Array,
     memory: jax.Array,
@@ -287,19 +186,8 @@ def cleanup(
 
     Returns:
         Most similar vector from memory, or (vector, similarity) if return_similarity=True
-
-    Example:
-        >>> query = jnp.array([0.9, 0.1, 0.0])
-        >>> memory = jnp.array([[1.0, 0.0, 0.0],
-        ...                     [0.0, 1.0, 0.0],
-        ...                     [0.0, 0.0, 1.0]])
-        >>> cleanup(query, memory)
-        Array([1., 0., 0.], dtype=float32)  # Closest to first vector
     """
-    # Compute similarities with all memory vectors
     similarities = jax.vmap(lambda m: similarity_fn(query, m))(memory)
-
-    # Find most similar
     best_idx = jnp.argmax(similarities)
     best_vector = memory[best_idx]
 
@@ -308,20 +196,11 @@ def cleanup(
     return best_vector
 
 
-# ============================================================================
-# Batch Operations (using vmap)
-# ============================================================================
-
 # Batch versions for common operations
 batch_bind_bsc = jax.vmap(bind_bsc, in_axes=(0, 0))
 batch_bind_map = jax.vmap(bind_map, in_axes=(0, 0))
 batch_hamming_similarity = jax.vmap(hamming_similarity, in_axes=(0, None))
 batch_cosine_similarity = jax.vmap(cosine_similarity, in_axes=(0, None))
-
-
-# ============================================================================
-# Holographic Reduced Representations (HRR) Operations
-# ============================================================================
 
 
 @jax.jit
@@ -337,11 +216,7 @@ def bind_hrr(x: jax.Array, y: jax.Array) -> jax.Array:
 
     Returns:
         Bound hypervector via circular convolution
-
-    Note:
-        This is computed efficiently using FFT: ifft(fft(x) * fft(y))
     """
-    # Compute via FFT for efficiency
     x_fft = jnp.fft.fft(x, axis=-1)
     y_fft = jnp.fft.fft(y, axis=-1)
     result_fft = x_fft * y_fft
@@ -360,12 +235,158 @@ def inverse_hrr(x: jax.Array) -> jax.Array:
     Returns:
         Inverse hypervector
     """
-    # Reverse all elements except the first
     return jnp.concatenate([x[..., :1], jnp.flip(x[..., 1:], axis=-1)], axis=-1)
 
 
-# Bundle for HRR is same as MAP
+# HRR bundle reuses MAP bundle
 bundle_hrr = bundle_map
+
+
+@jax.jit
+def bind_cgr(x: jax.Array, y: jax.Array, q: int) -> jax.Array:
+    """Bind using modular addition for Cyclic Group Representation.
+
+    Args:
+        x: Integer hypervector with values in {0, ..., q-1}, shape (..., d)
+        y: Integer hypervector with values in {0, ..., q-1}, shape (..., d)
+        q: Size of the cyclic group
+
+    Returns:
+        Bound hypervector: (x + y) mod q
+    """
+    return (x + y) % q
+
+
+def bundle_cgr(vectors: jax.Array, q: int, axis: int = 0) -> jax.Array:
+    """Bundle using component-wise mode for CGR.
+
+    Selects the most frequent value at each dimension.
+
+    Args:
+        vectors: Integer hypervectors with values in {0, ..., q-1}
+        q: Size of the cyclic group
+        axis: Axis along which to bundle (default: 0)
+
+    Returns:
+        Bundled hypervector with mode value at each dimension
+    """
+    one_hot = jax.nn.one_hot(vectors, q)
+    counts = jnp.sum(one_hot, axis=axis)
+    return jnp.argmax(counts, axis=-1).astype(jnp.int32)
+
+
+@jax.jit
+def inverse_cgr(x: jax.Array, q: int) -> jax.Array:
+    """Inverse via modular negation for CGR.
+
+    Args:
+        x: Integer hypervector with values in {0, ..., q-1}
+        q: Size of the cyclic group
+
+    Returns:
+        Inverse: (q - x) mod q
+    """
+    return (q - x) % q
+
+
+@jax.jit
+def matching_similarity(x: jax.Array, y: jax.Array) -> jax.Array:
+    """Fraction of matching elements between integer hypervectors.
+
+    Random vectors with q levels have expected similarity 1/q.
+
+    Args:
+        x: Integer hypervector of shape (..., d)
+        y: Integer hypervector of shape (..., d)
+
+    Returns:
+        Similarity in [0, 1]
+    """
+    return jnp.mean((x == y).astype(jnp.float32), axis=-1)
+
+
+# MCR bind reuses CGR bind
+bind_mcr = bind_cgr
+# MCR inverse reuses CGR inverse
+inverse_mcr = inverse_cgr
+
+
+def bundle_mcr(vectors: jax.Array, q: int, axis: int = 0) -> jax.Array:
+    """Bundle using phasor sum and snap-to-grid for MCR.
+
+    Converts indices to complex phasors (q-th roots of unity), sums them,
+    and snaps back to the nearest discrete phase level.
+
+    Args:
+        vectors: Integer hypervectors with values in {0, ..., q-1}
+        q: Number of phase levels
+        axis: Axis along which to bundle (default: 0)
+
+    Returns:
+        Bundled hypervector with values snapped to nearest phase index
+    """
+    phases = 2 * jnp.pi * vectors.astype(jnp.float32) / q
+    phasors = jnp.exp(1j * phases)
+    summed = jnp.sum(phasors, axis=axis)
+    result_angles = jnp.angle(summed) % (2 * jnp.pi)
+    result_indices = jnp.round(result_angles * q / (2 * jnp.pi)) % q
+    return result_indices.astype(jnp.int32)
+
+
+@jax.jit
+def phasor_similarity(x: jax.Array, y: jax.Array, q: int) -> jax.Array:
+    """Similarity via phasor inner product for MCR.
+
+    Converts to phasors and computes the real part of the normalized
+    inner product. Random vectors have expected similarity ~0.
+
+    Args:
+        x: Integer hypervector with values in {0, ..., q-1}
+        y: Integer hypervector with values in {0, ..., q-1}
+        q: Number of phase levels
+
+    Returns:
+        Similarity in [-1, 1]
+    """
+    phases_x = 2 * jnp.pi * x.astype(jnp.float32) / q
+    phases_y = 2 * jnp.pi * y.astype(jnp.float32) / q
+    phasors_x = jnp.exp(1j * phases_x)
+    phasors_y = jnp.exp(1j * phases_y)
+    return jnp.real(jnp.mean(phasors_x * jnp.conj(phasors_y), axis=-1))
+
+
+@jax.jit
+def bind_vtb(x: jax.Array, y: jax.Array) -> jax.Array:
+    """Bind using matrix multiplication for VTB.
+
+    Reshapes d-dimensional vectors into sqrt(d) x sqrt(d) matrices
+    and multiplies them. Requires d to be a perfect square.
+
+    Args:
+        x: Real-valued hypervector of shape (..., d)
+        y: Real-valued hypervector of shape (..., d)
+
+    Returns:
+        Bound hypervector of shape (..., d)
+    """
+    d = x.shape[-1]
+    n = round(d**0.5)
+    X = x.reshape(*x.shape[:-1], n, n)
+    Y = y.reshape(*y.shape[:-1], n, n)
+    return (X @ Y).reshape(*x.shape[:-1], d)
+
+
+@jax.jit
+def inverse_vtb(x: jax.Array) -> jax.Array:
+    """Inverse via matrix pseudoinverse for VTB."""
+    d = x.shape[-1]
+    n = round(d**0.5)
+    X = x.reshape(*x.shape[:-1], n, n)
+    return jnp.linalg.pinv(X).reshape(*x.shape[:-1], d)
+
+
+# VTB bundle reuses MAP bundle
+bundle_vtb = bundle_map
 
 
 __all__ = [
@@ -383,6 +404,20 @@ __all__ = [
     "bind_hrr",
     "bundle_hrr",
     "inverse_hrr",
+    # CGR operations
+    "bind_cgr",
+    "bundle_cgr",
+    "inverse_cgr",
+    "matching_similarity",
+    # MCR operations
+    "bind_mcr",
+    "bundle_mcr",
+    "inverse_mcr",
+    "phasor_similarity",
+    # VTB operations
+    "bind_vtb",
+    "bundle_vtb",
+    "inverse_vtb",
     # Universal operations
     "permute",
     "cleanup",

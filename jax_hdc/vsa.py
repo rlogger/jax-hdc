@@ -5,42 +5,13 @@ bundling, and similarity operations. All models follow a consistent API.
 """
 
 from dataclasses import dataclass, field
-from typing import Callable, Optional
 
 import jax
 import jax.numpy as jnp
 
 from jax_hdc import functional as F
+from jax_hdc._compat import register_dataclass
 from jax_hdc.constants import EPS
-
-# JAX compatibility: register_dataclass behavior changed across versions
-# In JAX >= 0.4.14, it can be used as a decorator without arguments
-# In older versions, it requires explicit data_fields and meta_fields
-try:
-    # Try newer JAX syntax (>= 0.4.14)
-    _test_cls = type("_Test", (), {"__annotations__": {"x": int}})
-    _test_dataclass = jax.tree_util.register_dataclass(_test_cls)
-    del _test_cls, _test_dataclass
-
-    def register_dataclass(cls: type) -> type:
-        """Wrapper for jax.tree_util.register_dataclass."""
-        return jax.tree_util.register_dataclass(cls)
-
-except TypeError:
-    # Fallback for older JAX versions
-    import dataclasses as _dataclasses
-
-    def register_dataclass(cls: type) -> type:
-        """Compatibility wrapper for register_dataclass with older JAX versions."""
-        data_fields = []
-        meta_fields = []
-        for f in _dataclasses.fields(cls):
-            if f.metadata.get("static", False):
-                meta_fields.append(f.name)
-            else:
-                data_fields.append(f.name)
-
-        return jax.tree_util.register_dataclass(cls, data_fields, meta_fields)
 
 
 @register_dataclass
@@ -75,27 +46,9 @@ class VSAModel:
 @register_dataclass
 @dataclass
 class BSC(VSAModel):
-    """Binary Spatter Codes (BSC) model.
+    """Binary Spatter Codes (BSC).
 
-    BSC uses binary hypervectors with:
-    - Binding: XOR (element-wise logical XOR)
-    - Bundling: Majority (element-wise majority vote)
-    - Similarity: Hamming distance
-
-    Properties:
-        - Memory efficient (1 bit per dimension)
-        - Fast operations (bitwise operations)
-        - Self-inverse binding
-
-    Example:
-        >>> import jax
-        >>> model = BSC.create(dimensions=10000)
-        >>> key = jax.random.PRNGKey(42)
-        >>> x = model.random(key, (10000,))
-        >>> y = model.random(key, (10000,))
-        >>> bound = model.bind(x, y)
-        >>> sim = model.similarity(bound, x)
-        >>> print(f"Similarity: {sim:.3f}")  # Should be ~0.5 (random)
+    Binary hypervectors with XOR binding, majority bundling, Hamming similarity.
     """
 
     @staticmethod
@@ -145,27 +98,10 @@ class BSC(VSAModel):
 @register_dataclass
 @dataclass
 class MAP(VSAModel):
-    """Multiply-Add-Permute (MAP) model.
+    """Multiply-Add-Permute (MAP).
 
-    MAP uses real-valued hypervectors with:
-    - Binding: Element-wise multiplication
-    - Bundling: Normalized sum
-    - Similarity: Cosine similarity
-
-    Properties:
-        - Smooth optimization landscape
-        - Compatible with gradient-based learning
-        - Simple inverse operation
-
-    Example:
-        >>> import jax
-        >>> model = MAP.create(dimensions=10000)
-        >>> key = jax.random.PRNGKey(42)
-        >>> x = model.random(key, (10000,))
-        >>> y = model.random(key, (10000,))
-        >>> bound = model.bind(x, y)
-        >>> sim = model.similarity(bound, x)
-        >>> print(f"Similarity: {sim:.3f}")  # Should be ~0.0 (orthogonal)
+    Real-valued vectors with element-wise multiply binding, normalized sum bundling,
+    cosine similarity.
     """
 
     @staticmethod
@@ -218,29 +154,10 @@ class MAP(VSAModel):
 @register_dataclass
 @dataclass
 class HRR(VSAModel):
-    """Holographic Reduced Representations (HRR) model.
+    """Holographic Reduced Representations (HRR).
 
-    HRR uses real-valued hypervectors with:
-    - Binding: Circular convolution
-    - Bundling: Normalized sum
-    - Similarity: Cosine similarity
-
-    Properties:
-        - Theoretically well-founded (based on holography)
-        - Efficient via FFT
-        - Good compression properties
-
-    Example:
-        >>> import jax
-        >>> model = HRR.create(dimensions=10000)
-        >>> key = jax.random.PRNGKey(42)
-        >>> x = model.random(key, (10000,))
-        >>> y = model.random(key, (10000,))
-        >>> bound = model.bind(x, y)
-        >>> # Unbinding: bind(bound, inverse(y)) ≈ x
-        >>> unbound = model.bind(bound, model.inverse(y))
-        >>> sim = model.similarity(unbound, x)
-        >>> print(f"Similarity: {sim:.3f}")  # Should be high
+    Real-valued vectors with circular convolution binding, normalized sum bundling,
+    cosine similarity.
     """
 
     @staticmethod
@@ -293,25 +210,9 @@ class HRR(VSAModel):
 @register_dataclass
 @dataclass
 class FHRR(VSAModel):
-    """Fourier Holographic Reduced Representations (FHRR) model.
+    """Fourier Holographic Reduced Representations (FHRR).
 
-    FHRR uses complex-valued hypervectors with:
-    - Binding: Element-wise multiplication in Fourier domain
-    - Bundling: Normalized sum
-    - Similarity: Cosine similarity (magnitude)
-
-    Properties:
-        - Efficient binding (no FFT needed)
-        - Enables vector function architectures
-        - Phase information for structured representations
-
-    Example:
-        >>> import jax
-        >>> model = FHRR.create(dimensions=10000)
-        >>> key = jax.random.PRNGKey(42)
-        >>> x = model.random(key, (10000,))
-        >>> y = model.random(key, (10000,))
-        >>> bound = model.bind(x, y)
+    Complex-valued vectors with element-wise multiply binding, normalized sum bundling.
     """
 
     @staticmethod
@@ -368,16 +269,10 @@ class FHRR(VSAModel):
 @register_dataclass
 @dataclass
 class BSBC(VSAModel):
-    """Binary Sparse Block Codes (B-SBC) model.
+    """Binary Sparse Block Codes (B-SBC).
 
-    B-SBC uses block-sparse binary hypervectors. Each block has exactly
-    k_active ones; binding and bundling match BSC (XOR, majority).
-
-    Properties:
-        - Sparse: Few ones per block (biological plausibility)
-        - Binding: XOR (element-wise)
-        - Bundling: Majority rule
-        - Same operations as BSC, different random distribution
+    Block-sparse binary vectors with k_active ones per block, XOR binding,
+    majority bundling.
     """
 
     block_size: int = field(metadata=dict(static=True), default=100)
@@ -459,20 +354,137 @@ class BSBC(VSAModel):
         return jnp.reshape(hvs, shape)
 
 
+@register_dataclass
+@dataclass
+class CGR(VSAModel):
+    """Cyclic Group Representation (CGR).
+
+    Integer hypervectors in Z_q with modular addition binding,
+    component-wise mode bundling.
+    """
+
+    q: int = field(metadata=dict(static=True), default=8)
+
+    @staticmethod
+    def create(dimensions: int = 10000, q: int = 8) -> "CGR":
+        if q < 2:
+            raise ValueError(f"q must be >= 2, got {q}")
+        return CGR(name="cgr", dimensions=dimensions, q=q)
+
+    @jax.jit
+    def bind(self, x: jax.Array, y: jax.Array) -> jax.Array:
+        """Bind using modular addition."""
+        return F.bind_cgr(x, y, self.q)
+
+    def bundle(self, vectors: jax.Array, axis: int = 0) -> jax.Array:
+        """Bundle using component-wise mode."""
+        return F.bundle_cgr(vectors, self.q, axis=axis)
+
+    @jax.jit
+    def inverse(self, x: jax.Array) -> jax.Array:
+        """Inverse via modular negation."""
+        return F.inverse_cgr(x, self.q)
+
+    @jax.jit
+    def similarity(self, x: jax.Array, y: jax.Array) -> jax.Array:
+        """Compute fraction of matching elements."""
+        return F.matching_similarity(x, y)
+
+    def random(self, key: jax.Array, shape: tuple) -> jax.Array:
+        """Generate random integer hypervectors in {0, ..., q-1}."""
+        return jax.random.randint(key, shape=shape, minval=0, maxval=self.q)
+
+
+@register_dataclass
+@dataclass
+class MCR(VSAModel):
+    """Modular Composite Representation (MCR).
+
+    Integer phase vectors with modular addition binding, phasor sum bundling.
+    """
+
+    q: int = field(metadata=dict(static=True), default=64)
+
+    @staticmethod
+    def create(dimensions: int = 10000, q: int = 64) -> "MCR":
+        if q < 2:
+            raise ValueError(f"q must be >= 2, got {q}")
+        return MCR(name="mcr", dimensions=dimensions, q=q)
+
+    @jax.jit
+    def bind(self, x: jax.Array, y: jax.Array) -> jax.Array:
+        """Bind using modular addition (phase addition)."""
+        return F.bind_mcr(x, y, self.q)
+
+    def bundle(self, vectors: jax.Array, axis: int = 0) -> jax.Array:
+        """Bundle using phasor sum with snap-to-grid."""
+        return F.bundle_mcr(vectors, self.q, axis=axis)
+
+    @jax.jit
+    def inverse(self, x: jax.Array) -> jax.Array:
+        """Inverse via modular negation (phase conjugate)."""
+        return F.inverse_mcr(x, self.q)
+
+    @jax.jit
+    def similarity(self, x: jax.Array, y: jax.Array) -> jax.Array:
+        """Compute phasor similarity."""
+        return F.phasor_similarity(x, y, self.q)
+
+    def random(self, key: jax.Array, shape: tuple) -> jax.Array:
+        """Generate random integer hypervectors in {0, ..., q-1}."""
+        return jax.random.randint(key, shape=shape, minval=0, maxval=self.q)
+
+
+@register_dataclass
+@dataclass
+class VTB(VSAModel):
+    """Vector-Derived Transformation Binding (VTB).
+
+    Real-valued vectors with matrix multiplication binding, normalized sum bundling.
+    """
+
+    @staticmethod
+    def create(dimensions: int = 10000) -> "VTB":
+        n = round(dimensions**0.5)
+        if n * n != dimensions:
+            raise ValueError(f"VTB requires dimensions to be a perfect square, got {dimensions}")
+        return VTB(name="vtb", dimensions=dimensions)
+
+    @jax.jit
+    def bind(self, x: jax.Array, y: jax.Array) -> jax.Array:
+        """Bind using matrix multiplication."""
+        return F.bind_vtb(x, y)
+
+    def bundle(self, vectors: jax.Array, axis: int = 0) -> jax.Array:
+        """Bundle using normalized sum."""
+        return F.bundle_vtb(vectors, axis=axis)
+
+    @jax.jit
+    def inverse(self, x: jax.Array) -> jax.Array:
+        """Inverse via matrix pseudoinverse."""
+        return F.inverse_vtb(x)
+
+    @jax.jit
+    def similarity(self, x: jax.Array, y: jax.Array) -> jax.Array:
+        """Compute cosine similarity."""
+        return F.cosine_similarity(x, y)
+
+    def random(self, key: jax.Array, shape: tuple) -> jax.Array:
+        """Generate random normalized real-valued hypervectors."""
+        vectors = jax.random.normal(key, shape=shape)
+        norm = jnp.linalg.norm(vectors, axis=-1, keepdims=True)
+        return vectors / (norm + EPS)
+
+
 def create_vsa_model(model_type: str = "map", dimensions: int = 10000) -> VSAModel:
     """Factory function to create VSA models.
 
     Args:
-        model_type: Type of VSA model ('bsc', 'map', 'hrr', 'fhrr')
+        model_type: Type of VSA model ('bsc', 'map', 'hrr', 'fhrr', 'bsbc', 'cgr', 'mcr', 'vtb')
         dimensions: Dimensionality of hypervectors (default: 10000)
 
     Returns:
         Initialized VSA model
-
-    Example:
-        >>> model = create_vsa_model('map', dimensions=10000)
-        >>> print(model.name)
-        'map'
     """
     models = {
         "bsc": BSC,
@@ -480,11 +492,14 @@ def create_vsa_model(model_type: str = "map", dimensions: int = 10000) -> VSAMod
         "hrr": HRR,
         "fhrr": FHRR,
         "bsbc": BSBC,
+        "cgr": CGR,
+        "mcr": MCR,
+        "vtb": VTB,
     }
 
     if model_type not in models:
         raise ValueError(
-            f"Unknown VSA model: {model_type}. " f"Available models: {list(models.keys())}"
+            f"Unknown VSA model: {model_type}. Available models: {list(models.keys())}"
         )
 
     return models[model_type].create(dimensions=dimensions)  # type: ignore[attr-defined]
@@ -497,5 +512,8 @@ __all__ = [
     "HRR",
     "FHRR",
     "BSBC",
+    "CGR",
+    "MCR",
+    "VTB",
     "create_vsa_model",
 ]

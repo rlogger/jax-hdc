@@ -1,7 +1,5 @@
 # macOS
 .DS_Store
-.AppleDouble
-.LSOverride
 
 # Python
 __pycache__/
@@ -19,7 +17,6 @@ build/
 # Virtual environments
 venv/
 env/
-ENV/
 .venv/
 
 # IDEs
@@ -28,9 +25,6 @@ ENV/
 *.swp
 *.swo
 *~
-.project
-.pydevproject
-.settings/
 
 # Testing
 .pytest_cache/
@@ -42,35 +36,22 @@ htmlcov/
 
 # Jupyter
 .ipynb_checkpoints/
-*.ipynb
 
 # Documentation
 docs/_build/
-docs/_static/
-docs/_templates/
-.readthedocs/
 
 # MyPy
 .mypy_cache/
 .dmypy.json
-dmypy.json
 
 # Profiling
 *.prof
-
-# Data files
-*.h5
-*.hdf5
-*.pkl
-*.pickle
-data/
-
-# Logs
-*.log
-logs/
 
 # Nix
 result
 result-*
 .direnv/
 .envrc.cache
+
+# Benchmarks
+benchmarks/benchmark_results.json

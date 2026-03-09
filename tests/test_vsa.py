@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from jax_hdc.vsa import BSBC, BSC, FHRR, HRR, MAP, create_vsa_model
+from jax_hdc.vsa import BSBC, BSC, CGR, FHRR, HRR, MAP, MCR, VTB, create_vsa_model
 
 
 class TestVSAModels:
@@ -49,7 +49,7 @@ class TestVSAModels:
 
     def test_factory_function(self):
         """Test create_vsa_model factory function."""
-        for model_type in ["bsc", "map", "hrr", "fhrr", "bsbc"]:
+        for model_type in ["bsc", "map", "hrr", "fhrr", "bsbc", "cgr", "mcr", "vtb"]:
             model = create_vsa_model(model_type, dimensions=10000)
             assert model.name == model_type
             assert model.dimensions == 10000
@@ -277,6 +277,175 @@ class TestFHRRModel:
 
         # Inverse should be conjugate
         assert jnp.allclose(x_inv, jnp.conj(x))
+
+
+class TestCGRModel:
+    """Test CGR model operations."""
+
+    def setup_method(self):
+        self.model = CGR.create(dimensions=10000, q=8)
+        self.key = jax.random.PRNGKey(42)
+
+    def test_create(self):
+        assert self.model.name == "cgr"
+        assert self.model.dimensions == 10000
+        assert self.model.q == 8
+
+    def test_create_invalid_q(self):
+        with pytest.raises(ValueError):
+            CGR.create(dimensions=10000, q=1)
+
+    def test_random_generation(self):
+        x = self.model.random(self.key, (10000,))
+        assert x.shape == (10000,)
+        assert jnp.all(x >= 0) and jnp.all(x < 8)
+
+    def test_bind_operation(self):
+        k1, k2 = jax.random.split(self.key)
+        x = self.model.random(k1, (10000,))
+        y = self.model.random(k2, (10000,))
+        bound = self.model.bind(x, y)
+        assert bound.shape == (10000,)
+        assert jnp.all(bound >= 0) and jnp.all(bound < 8)
+
+    def test_inverse_operation(self):
+        x = self.model.random(self.key, (10000,))
+        x_inv = self.model.inverse(x)
+        result = self.model.bind(x, x_inv)
+        assert jnp.allclose(result, 0)
+
+    def test_bundle_operation(self):
+        vectors = jnp.stack([self.model.random(jax.random.PRNGKey(i), (10000,)) for i in range(5)])
+        bundled = self.model.bundle(vectors, axis=0)
+        assert bundled.shape == (10000,)
+        assert jnp.all(bundled >= 0) and jnp.all(bundled < 8)
+
+    def test_similarity_self(self):
+        x = self.model.random(self.key, (10000,))
+        sim = self.model.similarity(x, x)
+        assert jnp.allclose(sim, 1.0)
+
+    def test_similarity_random(self):
+        k1, k2 = jax.random.split(self.key)
+        x = self.model.random(k1, (10000,))
+        y = self.model.random(k2, (10000,))
+        sim = self.model.similarity(x, y)
+        assert 0.0 < sim < 0.3
+
+
+class TestMCRModel:
+    """Test MCR model operations."""
+
+    def setup_method(self):
+        self.model = MCR.create(dimensions=10000, q=64)
+        self.key = jax.random.PRNGKey(42)
+
+    def test_create(self):
+        assert self.model.name == "mcr"
+        assert self.model.dimensions == 10000
+        assert self.model.q == 64
+
+    def test_create_invalid_q(self):
+        with pytest.raises(ValueError):
+            MCR.create(dimensions=10000, q=1)
+
+    def test_random_generation(self):
+        x = self.model.random(self.key, (10000,))
+        assert x.shape == (10000,)
+        assert jnp.all(x >= 0) and jnp.all(x < 64)
+
+    def test_bind_operation(self):
+        k1, k2 = jax.random.split(self.key)
+        x = self.model.random(k1, (10000,))
+        y = self.model.random(k2, (10000,))
+        bound = self.model.bind(x, y)
+        assert bound.shape == (10000,)
+        assert jnp.all(bound >= 0) and jnp.all(bound < 64)
+
+    def test_inverse_operation(self):
+        x = self.model.random(self.key, (10000,))
+        x_inv = self.model.inverse(x)
+        result = self.model.bind(x, x_inv)
+        assert jnp.allclose(result, 0)
+
+    def test_bundle_operation(self):
+        vectors = jnp.stack([self.model.random(jax.random.PRNGKey(i), (10000,)) for i in range(5)])
+        bundled = self.model.bundle(vectors, axis=0)
+        assert bundled.shape == (10000,)
+        assert jnp.all(bundled >= 0) and jnp.all(bundled < 64)
+
+    def test_similarity_self(self):
+        x = self.model.random(self.key, (10000,))
+        sim = self.model.similarity(x, x)
+        assert jnp.allclose(sim, 1.0)
+
+    def test_similarity_random(self):
+        k1, k2 = jax.random.split(self.key)
+        x = self.model.random(k1, (10000,))
+        y = self.model.random(k2, (10000,))
+        sim = self.model.similarity(x, y)
+        assert -0.1 < sim < 0.1
+
+
+class TestVTBModel:
+    """Test VTB model operations."""
+
+    def setup_method(self):
+        self.model = VTB.create(dimensions=10000)
+        self.key = jax.random.PRNGKey(42)
+
+    def test_create(self):
+        assert self.model.name == "vtb"
+        assert self.model.dimensions == 10000
+
+    def test_create_invalid_dimensions(self):
+        with pytest.raises(ValueError):
+            VTB.create(dimensions=10001)
+
+    def test_random_generation(self):
+        x = self.model.random(self.key, (10000,))
+        assert x.shape == (10000,)
+        norm = jnp.linalg.norm(x)
+        assert jnp.allclose(norm, 1.0)
+
+    def test_bind_operation(self):
+        k1, k2 = jax.random.split(self.key)
+        x = self.model.random(k1, (10000,))
+        y = self.model.random(k2, (10000,))
+        bound = self.model.bind(x, y)
+        assert bound.shape == (10000,)
+
+    def test_bind_not_commutative(self):
+        """VTB binding is non-commutative (matrix multiplication)."""
+        k1, k2 = jax.random.split(self.key)
+        x = self.model.random(k1, (10000,))
+        y = self.model.random(k2, (10000,))
+        xy = self.model.bind(x, y)
+        yx = self.model.bind(y, x)
+        assert not jnp.allclose(xy, yx, atol=1e-3)
+
+    def test_bundle_operation(self):
+        vectors = self.model.random(self.key, (5, 10000))
+        bundled = self.model.bundle(vectors, axis=0)
+        assert bundled.shape == (10000,)
+        norm = jnp.linalg.norm(bundled)
+        assert jnp.allclose(norm, 1.0, atol=1e-5)
+
+    def test_similarity_self(self):
+        x = self.model.random(self.key, (10000,))
+        sim = self.model.similarity(x, x)
+        assert jnp.allclose(sim, 1.0, atol=1e-5)
+
+    def test_inverse_operation(self):
+        k1, k2 = jax.random.split(self.key)
+        x = self.model.random(k1, (10000,))
+        y = self.model.random(k2, (10000,))
+        bound = self.model.bind(x, y)
+        x_inv = self.model.inverse(x)
+        unbound = self.model.bind(x_inv, bound)
+        unbound_norm = unbound / (jnp.linalg.norm(unbound) + 1e-8)
+        sim = self.model.similarity(unbound_norm, y)
+        assert sim > 0.5
 
 
 if __name__ == "__main__":

@@ -4,7 +4,6 @@ This module provides various encoding strategies to transform different types
 of data (discrete features, continuous values, images) into hypervectors.
 """
 
-import math
 from dataclasses import dataclass, field
 from typing import Optional, Union
 
@@ -12,37 +11,9 @@ import jax
 import jax.numpy as jnp
 
 from jax_hdc import functional as F
+from jax_hdc._compat import register_dataclass
 from jax_hdc.constants import EPS
 from jax_hdc.vsa import VSAModel, create_vsa_model
-
-# JAX compatibility: register_dataclass behavior changed across versions
-# In JAX >= 0.4.14, it can be used as a decorator without arguments
-# In older versions, it requires explicit data_fields and meta_fields
-try:
-    # Try newer JAX syntax (>= 0.4.14)
-    _test_cls = type("_Test", (), {"__annotations__": {"x": int}})
-    _test_dataclass = jax.tree_util.register_dataclass(_test_cls)
-    del _test_cls, _test_dataclass
-
-    def register_dataclass(cls: type) -> type:
-        """Wrapper for jax.tree_util.register_dataclass."""
-        return jax.tree_util.register_dataclass(cls)
-
-except TypeError:
-    # Fallback for older JAX versions
-    import dataclasses as _dataclasses
-
-    def register_dataclass(cls: type) -> type:
-        """Compatibility wrapper for register_dataclass with older JAX versions."""
-        data_fields = []
-        meta_fields = []
-        for f in _dataclasses.fields(cls):
-            if f.metadata.get("static", False):
-                meta_fields.append(f.name)
-            else:
-                data_fields.append(f.name)
-
-        return jax.tree_util.register_dataclass(cls, data_fields, meta_fields)
 
 
 @register_dataclass
@@ -52,28 +23,6 @@ class RandomEncoder:
 
     Each unique feature value is mapped to a random hypervector from a codebook.
     Multiple features are bundled together to form the final representation.
-
-    Properties:
-        - Suitable for categorical/discrete data
-        - Preserves similarity: similar feature values map to similar hypervectors
-        - Memory efficient: stores only the codebook
-
-    Example:
-        >>> import jax
-        >>> import jax.numpy as jnp
-        >>> # Create encoder for 10 features with 100 possible values each
-        >>> encoder = RandomEncoder.create(
-        ...     num_features=10,
-        ...     num_values=100,
-        ...     dimensions=10000,
-        ...     vsa_model='map',
-        ...     key=jax.random.PRNGKey(42)
-        ... )
-        >>> # Encode a sample with feature indices
-        >>> sample = jnp.array([5, 12, 3, 89, 45, 67, 23, 8, 91, 34])
-        >>> encoded = encoder.encode(sample)
-        >>> print(encoded.shape)
-        (10000,)
     """
 
     # Data fields (traced by JAX)
@@ -170,33 +119,6 @@ class LevelEncoder:
 
     Continuous values are encoded by interpolating between level hypervectors,
     creating a smooth representation where similar values map to similar hypervectors.
-
-    Two encoding strategies:
-    - Thermometer: Binary encoding with cumulative levels
-    - Circular: Smooth interpolation for periodic values
-
-    Properties:
-        - Preserves ordering: similar values → similar hypervectors
-        - Differentiable: compatible with gradient-based learning
-        - Configurable resolution
-
-    Example:
-        >>> import jax
-        >>> import jax.numpy as jnp
-        >>> # Create encoder for values in range [0, 1]
-        >>> encoder = LevelEncoder.create(
-        ...     num_levels=100,
-        ...     dimensions=10000,
-        ...     min_value=0.0,
-        ...     max_value=1.0,
-        ...     vsa_model='map',
-        ...     key=jax.random.PRNGKey(42)
-        ... )
-        >>> # Encode a continuous value
-        >>> value = 0.75
-        >>> encoded = encoder.encode(value)
-        >>> print(encoded.shape)
-        (10000,)
     """
 
     # Data fields
@@ -322,27 +244,6 @@ class ProjectionEncoder:
 
     Projects high-dimensional input data into hypervector space using a
     random projection matrix. Useful for images, text embeddings, etc.
-
-    Properties:
-        - Preserves approximate distances (Johnson-Lindenstrauss lemma)
-        - Efficient for high-dimensional data
-        - No training required
-
-    Example:
-        >>> import jax
-        >>> import jax.numpy as jnp
-        >>> # Create encoder for 784-dimensional input (e.g., 28x28 image)
-        >>> encoder = ProjectionEncoder.create(
-        ...     input_dim=784,
-        ...     dimensions=10000,
-        ...     vsa_model='map',
-        ...     key=jax.random.PRNGKey(42)
-        ... )
-        >>> # Encode a flattened image
-        >>> image = jax.random.normal(jax.random.PRNGKey(0), (784,))
-        >>> encoded = encoder.encode(image)
-        >>> print(encoded.shape)
-        (10000,)
     """
 
     # Data fields
@@ -434,11 +335,6 @@ class KernelEncoder:
     Approximates the RBF kernel k(x,y) = exp(-gamma ||x-y||^2) via random
     Fourier features, mapping input to a hypervector space that preserves
     kernel similarity.
-
-    Properties:
-        - Approximates RBF/ Gaussian kernel
-        - Useful for non-linear decision boundaries
-        - No training required
     """
 
     omega: jax.Array  # Shape: (input_dim, n_features)
@@ -480,7 +376,7 @@ class KernelEncoder:
         # Random Fourier features: omega ~ N(0, 2*gamma I), bias ~ U(0, 2*pi)
         key_omega, key_bias = jax.random.split(key)
         omega = jax.random.normal(key_omega, (input_dim, dimensions)) * jnp.sqrt(2.0 * gamma)
-        bias = jax.random.uniform(key_bias, (dimensions,), minval=0.0, maxval=2.0 * math.pi)
+        bias = jax.random.uniform(key_bias, (dimensions,), minval=0.0, maxval=2.0 * jnp.pi)
 
         return KernelEncoder(
             omega=omega,
@@ -515,10 +411,6 @@ class GraphEncoder:
 
     Encodes a graph by assigning random hypervectors to nodes and
     bundling bound node pairs for edges. Graph = bundle of edge HVs.
-
-    Properties:
-        - Encodes structure via binding + permutation
-        - Suitable for small/medium graphs
     """
 
     node_embeddings: jax.Array  # Shape: (num_nodes, dimensions)

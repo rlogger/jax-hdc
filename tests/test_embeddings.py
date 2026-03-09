@@ -390,9 +390,7 @@ class TestKernelEncoder:
 
     def test_encode_single_input(self):
         """Test encoding a single input."""
-        encoder = KernelEncoder.create(
-            input_dim=10, dimensions=100, key=jax.random.PRNGKey(42)
-        )
+        encoder = KernelEncoder.create(input_dim=10, dimensions=100, key=jax.random.PRNGKey(42))
         x = jax.random.normal(jax.random.PRNGKey(0), (10,))
         encoded = encoder.encode(x)
         assert encoded.shape == (100,)
@@ -400,9 +398,7 @@ class TestKernelEncoder:
 
     def test_encode_batch(self):
         """Test batch encoding."""
-        encoder = KernelEncoder.create(
-            input_dim=10, dimensions=100, key=jax.random.PRNGKey(42)
-        )
+        encoder = KernelEncoder.create(input_dim=10, dimensions=100, key=jax.random.PRNGKey(42))
         x = jax.random.normal(jax.random.PRNGKey(0), (5, 10))
         encoded = encoder.encode_batch(x)
         assert encoded.shape == (5, 100)
@@ -432,31 +428,24 @@ class TestGraphEncoder:
 
     def test_creation_with_defaults(self):
         """Test GraphEncoder creation."""
-        encoder = GraphEncoder.create(
-            num_nodes=10, dimensions=100, key=jax.random.PRNGKey(42)
-        )
+        encoder = GraphEncoder.create(num_nodes=10, dimensions=100, key=jax.random.PRNGKey(42))
         assert encoder.num_nodes == 10
         assert encoder.dimensions == 100
         assert encoder.node_embeddings.shape == (10, 100)
 
     def test_encode_edges(self):
         """Test encoding graph edges."""
-        encoder = GraphEncoder.create(
-            num_nodes=5, dimensions=100, key=jax.random.PRNGKey(42)
-        )
+        encoder = GraphEncoder.create(num_nodes=5, dimensions=100, key=jax.random.PRNGKey(42))
         edges = jnp.array([[0, 1], [1, 2], [2, 0]])
         hv = encoder.encode_edges(edges)
         assert hv.shape == (100,)
 
     def test_encode_edges_clamps_out_of_bounds_indices(self):
         """Test that out-of-bounds node indices in edges are clamped."""
-        encoder = GraphEncoder.create(
-            num_nodes=5, dimensions=100, key=jax.random.PRNGKey(42)
-        )
+        encoder = GraphEncoder.create(num_nodes=5, dimensions=100, key=jax.random.PRNGKey(42))
         edges = jnp.array([[0, 1], [10, 20], [-1, 100]])  # Out-of-bounds
         hv = encoder.encode_edges(edges)
         assert hv.shape == (100,)
-        assert jnp.isfinite(hv).all()
         assert jnp.isfinite(hv).all()
 
     def test_creation_with_vsa_model_instance(self):

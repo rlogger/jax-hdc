@@ -66,7 +66,7 @@ def main():
     n_train = 800
     n_test = 200
 
-    print(f"\nConfiguration:")
+    print("\nConfiguration:")
     print(f"  Hypervector dimensions: {dimensions}")
     print(f"  Number of features: {n_features}")
     print(f"  Values per feature: {n_values}")
@@ -93,7 +93,7 @@ def main():
     print(f"Generated test data: {test_data.shape}")
 
     # Distribution of classes
-    print(f"\nClass distribution (training):")
+    print("\nClass distribution (training):")
     for i in range(n_classes):
         count = jnp.sum(train_labels == i)
         print(f"  Class {i}: {count} samples")
@@ -112,7 +112,7 @@ def main():
         key=data_key,
     )
 
-    print(f"\nCreated RandomEncoder:")
+    print("\nCreated RandomEncoder:")
     print(f"  Codebook shape: {encoder.codebook.shape}")
     print(f"  Total parameters: {encoder.codebook.size:,}")
 
@@ -147,7 +147,7 @@ def main():
     print(f"Trained classifier with {n_classes} prototypes")
     print(f"Prototype shape: {classifier.prototypes.shape}")
     print(f"Training time: {train_time:.2f}ms")
-    print(f"Training is O(n) - single pass through data to compute centroids")
+    print("Training is O(n) - single pass through data to compute centroids")
 
     # Evaluate
     print("\n" + "=" * 70)

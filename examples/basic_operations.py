@@ -72,14 +72,14 @@ def demo_binding_and_unbinding():
     unbound = normalize(unbound)
 
     sim_unbound_x = model.similarity(unbound, x)
-    print(f"\nAfter unbinding (binding with inverse of y):")
+    print("\nAfter unbinding (binding with inverse of y):")
     print(f"Similarity with original x: {sim_unbound_x:.4f}")
     print("Expected: >0.9 (should recover the original x with high similarity)")
 
     # Demonstrate commutativity of binding
     bound_reversed = model.bind(y, x)
     sim_commutative = model.similarity(bound, bound_reversed)
-    print(f"\nCommutativity check:")
+    print("\nCommutativity check:")
     print(f"Similarity bind(x,y) vs bind(y,x): {sim_commutative:.4f}")
     print("Expected: ~1.0 (binding is commutative for MAP model)")
 
@@ -112,19 +112,19 @@ def demo_bundling():
     print(f"Bundled all vectors together (time: {bundle_time:.3f}ms)")
 
     # Check similarity with each input
-    print(f"\nSimilarity of bundled vector with each input:")
+    print("\nSimilarity of bundled vector with each input:")
     similarities = []
     for i in range(num_vectors):
         sim = model.similarity(bundled, vectors[i])
         similarities.append(sim)
-        print(f"  Vector {i+1}: {sim:.4f}")
+        print(f"  Vector {i + 1}: {sim:.4f}")
 
     avg_sim = jnp.mean(jnp.array(similarities))
     print(f"\nAverage similarity: {avg_sim:.4f}")
-    print(f"Expected: ~0.4-0.6 (bundled vector is similar to all inputs)")
+    print("Expected: ~0.4-0.6 (bundled vector is similar to all inputs)")
 
     # Test capacity: bundle more vectors and observe degradation
-    print(f"\nCapacity test (bundling varying numbers of vectors):")
+    print("\nCapacity test (bundling varying numbers of vectors):")
     for n in [5, 10, 20, 50, 100]:
         test_vectors = model.random(jax.random.split(key)[0], (n, 10000))
         test_bundled = model.bundle(test_vectors, axis=0)
@@ -177,13 +177,13 @@ def demo_sequence_encoding():
     # Check similarities between sequences
     sim_abc_cba = model.similarity(seq_abc, seq_cba)
     sim_abc_acb = model.similarity(seq_abc, seq_acb)
-    print(f"\nSequence similarities:")
+    print("\nSequence similarities:")
     print(f"  [A,B,C] vs [C,B,A]: {sim_abc_cba:.4f}")
     print(f"  [A,B,C] vs [A,C,B]: {sim_abc_acb:.4f}")
     print("Expected: Low similarity (different orders create different representations)")
 
     # Query for symbol at position 0 in seq_abc
-    print(f"\nQuerying for symbol at position 0 in sequence [A,B,C]:")
+    print("\nQuerying for symbol at position 0 in sequence [A,B,C]:")
     query = permute(seq_abc, -2)  # Unpermute position 0
     sim_a = model.similarity(query, a)
     sim_b = model.similarity(query, b)
@@ -197,7 +197,7 @@ def demo_sequence_encoding():
     print(f"  Best match: {best_match} (expected: A)")
 
     # Query for symbol at position 1
-    print(f"\nQuerying for symbol at position 1 in sequence [A,B,C]:")
+    print("\nQuerying for symbol at position 1 in sequence [A,B,C]:")
     query_pos1 = permute(seq_abc, -1)
     sim_a_pos1 = model.similarity(query_pos1, a)
     sim_b_pos1 = model.similarity(query_pos1, b)
@@ -225,14 +225,14 @@ def demo_bsc_vs_map():
     num_ops = 1000
 
     # BSC model (binary)
-    print(f"\nBSC (Binary Spatter Codes):")
+    print("\nBSC (Binary Spatter Codes):")
     bsc = BSC.create(dimensions=10000)
     x_bsc = bsc.random(key, (10000,))
     y_bsc = bsc.random(jax.random.split(key)[0], (10000,))
 
     print(f"  Vector dtype: {x_bsc.dtype}")
     print(f"  Memory per vector: {x_bsc.nbytes / 1024:.2f} KB")
-    print(f"  Binding operation: XOR (reversible, lossless)")
+    print("  Binding operation: XOR (reversible, lossless)")
 
     # Benchmark binding
     start_time = time.perf_counter()
@@ -247,14 +247,14 @@ def demo_bsc_vs_map():
     print(f"  Binding time (avg): {bsc_time:.4f}ms")
 
     # MAP model (real-valued)
-    print(f"\nMAP (Multiply-Add-Permute):")
+    print("\nMAP (Multiply-Add-Permute):")
     map_model = MAP.create(dimensions=10000)
     x_map = map_model.random(key, (10000,))
     y_map = map_model.random(jax.random.split(key)[0], (10000,))
 
     print(f"  Vector dtype: {x_map.dtype}")
     print(f"  Memory per vector: {x_map.nbytes / 1024:.2f} KB")
-    print(f"  Binding operation: Element-wise multiplication")
+    print("  Binding operation: Element-wise multiplication")
 
     # Benchmark binding
     start_time = time.perf_counter()
@@ -269,14 +269,15 @@ def demo_bsc_vs_map():
     print(f"  Binding time (avg): {map_time:.4f}ms")
 
     # Comparison
-    print(f"\nComparison:")
+    print("\nComparison:")
     print(f"  Memory efficiency: BSC is {x_map.nbytes / x_bsc.nbytes:.1f}x smaller")
     print(
-        f"  Speed: {'BSC' if bsc_time < map_time else 'MAP'} is {max(bsc_time, map_time) / min(bsc_time, map_time):.1f}x faster"
+        f"  Speed: {'BSC' if bsc_time < map_time else 'MAP'} is "
+        f"{max(bsc_time, map_time) / min(bsc_time, map_time):.1f}x faster"
     )
-    print(f"\nTrade-offs:")
-    print(f"  BSC: Memory-efficient, discrete operations, XOR binding")
-    print(f"  MAP: Gradient-friendly, smooth similarity, real-valued optimization")
+    print("\nTrade-offs:")
+    print("  BSC: Memory-efficient, discrete operations, XOR binding")
+    print("  MAP: Gradient-friendly, smooth similarity, real-valued optimization")
 
 
 def main():

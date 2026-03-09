@@ -11,31 +11,13 @@ import jax
 import jax.numpy as jnp
 
 from jax_hdc import functional as F
+from jax_hdc._compat import register_dataclass
 
 
-def _register_dataclass(cls: type) -> type:
-    """Register dataclass with JAX for tree operations."""
-    try:
-        _test_cls = type("_Test", (), {"__annotations__": {"x": int}})
-        jax.tree_util.register_dataclass(_test_cls)
-        del _test_cls
-        return jax.tree_util.register_dataclass(cls)
-    except TypeError:
-        import dataclasses as _dc
-
-        data_f = [f.name for f in _dc.fields(cls) if not f.metadata.get("static", False)]
-        meta_f = [f.name for f in _dc.fields(cls) if f.metadata.get("static", False)]
-        return jax.tree_util.register_dataclass(cls, data_f, meta_f)
-
-
-@_register_dataclass
+@register_dataclass
 @dataclass
 class SparseDistributedMemory:
-    """Sparse Distributed Memory (SDM) for content-addressable storage.
-
-    Stores patterns in a fixed set of locations; retrieval finds locations
-    within a radius of the query and sums their contents.
-    """
+    """Sparse Distributed Memory (SDM) for content-addressable storage."""
 
     locations: jax.Array  # (num_locations, dimensions)
     contents: jax.Array  # (num_locations, dimensions)
@@ -62,7 +44,6 @@ class SparseDistributedMemory:
         )
 
     def write(self, address: jax.Array, value: jax.Array) -> "SparseDistributedMemory":
-        """Write value to locations near address (cosine sim > threshold)."""
         sims = jax.vmap(lambda loc: F.cosine_similarity(address, loc))(self.locations)
         mask = sims >= (1.0 - self.radius)
         delta = mask[:, None].astype(jnp.float32) * value
@@ -75,7 +56,6 @@ class SparseDistributedMemory:
 
     @jax.jit
     def read(self, address: jax.Array) -> jax.Array:
-        """Read from locations near address."""
         sims = jax.vmap(lambda loc: F.cosine_similarity(address, loc))(self.locations)
         mask = sims >= (1.0 - self.radius)
         summed = jnp.sum(self.contents * mask[:, None], axis=0)
@@ -83,7 +63,7 @@ class SparseDistributedMemory:
         return summed / norm
 
 
-@_register_dataclass
+@register_dataclass
 @dataclass
 class HopfieldMemory:
     """Modern Hopfield network for associative memory."""
@@ -110,7 +90,6 @@ class HopfieldMemory:
 
     @jax.jit
     def retrieve(self, query: jax.Array) -> jax.Array:
-        """Retrieve most similar pattern via softmax attention."""
         q = query.reshape(-1)
         if self.patterns.shape[0] == 0:
             return jnp.zeros_like(q)
@@ -119,4 +98,85 @@ class HopfieldMemory:
         return jnp.sum(self.patterns * weights[:, None], axis=0)
 
 
-__all__ = ["SparseDistributedMemory", "HopfieldMemory"]
+@register_dataclass
+@dataclass
+class AttentionMemory:
+    """Attention-based retrieval with key-value storage and multi-head support."""
+
+    keys: jax.Array
+    values: jax.Array
+    dimensions: int = field(metadata=dict(static=True))
+    temperature: float = field(metadata=dict(static=True), default=1.0)
+    num_heads: int = field(metadata=dict(static=True), default=1)
+
+    @staticmethod
+    def create(
+        dimensions: int,
+        temperature: float = 1.0,
+        num_heads: int = 1,
+    ) -> "AttentionMemory":
+        if num_heads > 1 and dimensions % num_heads != 0:
+            raise ValueError(
+                f"dimensions ({dimensions}) must be divisible by num_heads ({num_heads})"
+            )
+        return AttentionMemory(
+            keys=jnp.zeros((0, dimensions)),
+            values=jnp.zeros((0, dimensions)),
+            dimensions=dimensions,
+            temperature=temperature,
+            num_heads=num_heads,
+        )
+
+    def write(self, key: jax.Array, value: jax.Array) -> "AttentionMemory":
+        k = key.reshape(1, -1)
+        v = value.reshape(1, -1)
+        return dc_replace(
+            self,
+            keys=jnp.concatenate([self.keys, k], axis=0),
+            values=jnp.concatenate([self.values, v], axis=0),
+        )
+
+    def write_batch(self, keys: jax.Array, values: jax.Array) -> "AttentionMemory":
+        return dc_replace(
+            self,
+            keys=jnp.concatenate([self.keys, keys], axis=0),
+            values=jnp.concatenate([self.values, values], axis=0),
+        )
+
+    @jax.jit
+    def retrieve(self, query: jax.Array) -> jax.Array:
+        q = query.reshape(-1)
+        if self.keys.shape[0] == 0:
+            return jnp.zeros(self.dimensions)
+
+        if self.num_heads == 1:
+            scale = (self.dimensions**0.5) * self.temperature
+            scores = self.keys @ q / scale
+            weights = jax.nn.softmax(scores)
+            return jnp.sum(self.values * weights[:, None], axis=0)
+        else:
+            head_dim = self.dimensions // self.num_heads
+            q_heads = q.reshape(self.num_heads, head_dim)
+            k_heads = self.keys.reshape(-1, self.num_heads, head_dim)
+            v_heads = self.values.reshape(-1, self.num_heads, head_dim)
+
+            scale = (head_dim**0.5) * self.temperature
+            scores = jnp.einsum("hd,nhd->hn", q_heads, k_heads) / scale
+            weights = jax.nn.softmax(scores, axis=-1)
+            result = jnp.einsum("hn,nhd->hd", weights, v_heads)
+            return result.reshape(-1)
+
+    @jax.jit
+    def retrieve_with_weights(self, query: jax.Array) -> tuple:
+        q = query.reshape(-1)
+        if self.keys.shape[0] == 0:
+            return jnp.zeros(self.dimensions), jnp.array([])
+
+        scale = (self.dimensions**0.5) * self.temperature
+        scores = self.keys @ q / scale
+        weights = jax.nn.softmax(scores)
+        result = jnp.sum(self.values * weights[:, None], axis=0)
+        return result, weights
+
+
+__all__ = ["SparseDistributedMemory", "HopfieldMemory", "AttentionMemory"]

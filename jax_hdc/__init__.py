@@ -1,14 +1,8 @@
-"""JAX-HDC: A high-performance JAX library for Hyperdimensional Computing.
-
-This library provides efficient implementations of Hyperdimensional Computing (HDC)
-and Vector Symbolic Architectures (VSA) using JAX for hardware acceleration.
-"""
+"""JAX-HDC: Hyperdimensional Computing with JAX."""
 
 __version__ = "0.1.0-alpha"
 
 from jax_hdc import embeddings, functional, memory, models, utils, vsa
-
-# Embeddings
 from jax_hdc.embeddings import (
     GraphEncoder,
     KernelEncoder,
@@ -16,9 +10,7 @@ from jax_hdc.embeddings import (
     ProjectionEncoder,
     RandomEncoder,
 )
-
-# Core functional operations
-from jax_hdc.functional import (  # BSC operations; MAP operations; Universal operations
+from jax_hdc.functional import (
     bind_bsc,
     bind_map,
     bundle_bsc,
@@ -30,21 +22,17 @@ from jax_hdc.functional import (  # BSC operations; MAP operations; Universal op
     inverse_map,
     permute,
 )
-
-# Models
+from jax_hdc.memory import AttentionMemory, HopfieldMemory, SparseDistributedMemory
 from jax_hdc.models import AdaptiveHDC, CentroidClassifier, LVQClassifier, RegularizedLSClassifier
-
-# VSA models
-from jax_hdc.vsa import BSBC, BSC, FHRR, HRR, MAP
+from jax_hdc.vsa import BSBC, BSC, CGR, FHRR, HRR, MAP, MCR, VTB
 
 __all__ = [
-    # Modules
     "functional",
     "vsa",
     "embeddings",
     "models",
     "utils",
-    # Functional operations
+    "memory",
     "bind_bsc",
     "bundle_bsc",
     "inverse_bsc",
@@ -55,21 +43,24 @@ __all__ = [
     "cosine_similarity",
     "permute",
     "cleanup",
-    # VSA models
     "BSC",
     "BSBC",
     "MAP",
     "HRR",
     "FHRR",
-    # Embeddings
+    "CGR",
+    "MCR",
+    "VTB",
     "RandomEncoder",
     "LevelEncoder",
     "ProjectionEncoder",
     "KernelEncoder",
     "GraphEncoder",
-    # Models
     "CentroidClassifier",
     "AdaptiveHDC",
     "LVQClassifier",
     "RegularizedLSClassifier",
+    "SparseDistributedMemory",
+    "HopfieldMemory",
+    "AttentionMemory",
 ]

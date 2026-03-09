@@ -20,12 +20,12 @@ import json
 import os
 import sys
 import time
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable
 
 
 def benchmark_jax(
     fn: Callable, *args: object, warmup: int = 20, trials: int = 200, **kwargs: object
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """Benchmark a JAX function. Returns (mean_ms, std_ms)."""
     import jax
 
@@ -33,7 +33,7 @@ def benchmark_jax(
         out = fn(*args, **kwargs)
         jax.block_until_ready(out)
 
-    times: List[float] = []
+    times: list[float] = []
     for _ in range(trials):
         t0 = time.perf_counter()
         out = fn(*args, **kwargs)
@@ -42,13 +42,13 @@ def benchmark_jax(
 
     mean = sum(times) / len(times)
     var = sum((t - mean) ** 2 for t in times) / len(times)
-    std = var ** 0.5
+    std = var**0.5
     return mean, std
 
 
 def benchmark_torch(
     fn: Callable, *args: object, warmup: int = 20, trials: int = 200, **kwargs: object
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """Benchmark a PyTorch/TorchHD function. Returns (mean_ms, std_ms)."""
     import torch
 
@@ -57,7 +57,7 @@ def benchmark_torch(
     if torch.cuda.is_available():
         torch.cuda.synchronize()
 
-    times: List[float] = []
+    times: list[float] = []
     for _ in range(trials):
         t0 = time.perf_counter()
         fn(*args, **kwargs)
@@ -67,14 +67,15 @@ def benchmark_torch(
 
     mean = sum(times) / len(times)
     var = sum((t - mean) ** 2 for t in times) / len(times)
-    std = var ** 0.5
+    std = var**0.5
     return mean, std
 
 
-def run_jax_hdc_benchmarks(dim: int = 10000, warmup: int = 20, trials: int = 200) -> Dict[str, float]:
+def run_jax_hdc_benchmarks(
+    dim: int = 10000, warmup: int = 20, trials: int = 200
+) -> dict[str, float]:
     """Run JAX-HDC benchmarks."""
     import jax
-    import jax.numpy as jnp
 
     from jax_hdc import MAP
     from jax_hdc import functional as F
@@ -92,7 +93,7 @@ def run_jax_hdc_benchmarks(dim: int = 10000, warmup: int = 20, trials: int = 200
     )
     data = jax.random.randint(key, (100, 20), 0, 10)
 
-    results: Dict[str, Tuple[float, float]] = {}
+    results: dict[str, tuple[float, float]] = {}
 
     mean, std = benchmark_jax(F.bind_map, x, y, warmup=warmup, trials=trials)
     results["MAP bind (2 HVs)"] = (mean, std)
@@ -109,7 +110,9 @@ def run_jax_hdc_benchmarks(dim: int = 10000, warmup: int = 20, trials: int = 200
     return results
 
 
-def run_torchhd_benchmarks(dim: int = 10000, warmup: int = 20, trials: int = 200) -> Dict[str, float]:
+def run_torchhd_benchmarks(
+    dim: int = 10000, warmup: int = 20, trials: int = 200
+) -> dict[str, float]:
     """Run TorchHD benchmarks. Equivalent operations."""
     import torch
     import torchhd
@@ -128,7 +131,7 @@ def run_torchhd_benchmarks(dim: int = 10000, warmup: int = 20, trials: int = 200
     # data indices: flatten feature*10 + value for each of 100×20
     data = torch.randint(0, 10, (100, 20), device=device)
 
-    results: Dict[str, Tuple[float, float]] = {}
+    results: dict[str, tuple[float, float]] = {}
 
     def bind_two():
         with torch.no_grad():
@@ -203,7 +206,7 @@ def main() -> int:
     print(f"{'Operation':<30} {'JAX-HDC (ms)':<18} {'TorchHD (ms)':<18} {'Speedup':<10}")
     print("-" * 70)
 
-    report: Dict[str, dict] = {}
+    report: dict[str, dict] = {}
     for op in ops:
         jax_mean, jax_std = jax_results[op]
         torch_mean, torch_std = torch_results[op]
@@ -215,7 +218,10 @@ def main() -> int:
             "torchhd_std_ms": round(torch_std, 4),
             "speedup": round(speedup, 2),
         }
-        print(f"{op:<30} {jax_mean:>8.3f} ± {jax_std:.3f}   {torch_mean:>8.3f} ± {torch_std:.3f}   {speedup:.2f}x")
+        print(
+            f"{op:<30} {jax_mean:>8.3f} ± {jax_std:.3f}"
+            f"   {torch_mean:>8.3f} ± {torch_std:.3f}   {speedup:.2f}x"
+        )
 
     print("-" * 70)
     print("\nNote: Results vary by hardware. Run on your machine for local numbers.")

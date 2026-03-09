@@ -30,20 +30,6 @@ from jax_hdc import MAP
 from jax_hdc.functional import cosine_similarity
 
 
-def create_random_hypervector(key, model, dimensions):
-    """Create a random hypervector with improved key splitting.
-
-    Args:
-        key: JAX random key
-        model: VSA model
-        dimensions: Hypervector dimensionality
-
-    Returns:
-        Random hypervector
-    """
-    return model.random(key, (dimensions,))
-
-
 def main():
     """Run the Kanerva Dollar of Mexico example."""
     print("=" * 70)
@@ -126,7 +112,8 @@ def main():
 
     # Create memory of all known concepts
     memory = jnp.concatenate(
-        [keys, us_values, mx_values], axis=0  # Role vectors  # US fillers  # Mexico fillers
+        [keys, us_values, mx_values],
+        axis=0,  # Role vectors  # US fillers  # Mexico fillers
     )
 
     memory_labels = [

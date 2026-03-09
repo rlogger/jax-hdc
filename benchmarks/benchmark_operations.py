@@ -15,12 +15,9 @@ Or with pytest (for CI):
     pytest benchmarks/ -v --benchmark-only
 """
 
-import time
-
 import jax
-import jax.numpy as jnp
 
-from jax_hdc import BSC, MAP
+from jax_hdc import MAP
 from jax_hdc import functional as F
 from jax_hdc.embeddings import RandomEncoder
 from jax_hdc.utils import benchmark_function
