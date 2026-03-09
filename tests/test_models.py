@@ -4,7 +4,13 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from jax_hdc.models import AdaptiveHDC, CentroidClassifier, LVQClassifier, RegularizedLSClassifier
+from jax_hdc.models import (
+    AdaptiveHDC,
+    CentroidClassifier,
+    ClusteringModel,
+    LVQClassifier,
+    RegularizedLSClassifier,
+)
 from jax_hdc.vsa import BSC, MAP
 
 
@@ -141,27 +147,24 @@ class TestCentroidClassifier:
         assert not jnp.allclose(trained_classifier.prototypes, classifier.prototypes)
 
     def test_fit_improves_accuracy(self):
-        """Test that fitting improves accuracy on separable data."""
+        """Test that fitting achieves high accuracy on separable data."""
         vsa = MAP.create(dimensions=1000)
         classifier = CentroidClassifier.create(
             num_classes=3, dimensions=1000, vsa_model=vsa, key=jax.random.PRNGKey(42)
         )
 
-        # Create separable training data with distinct prototypes
         key = jax.random.PRNGKey(0)
         proto_keys = jax.random.split(key, 3)
-
-        # Create class-specific base vectors
         base_vectors = [vsa.random(proto_keys[i], (1000,)) for i in range(3)]
 
-        # Generate samples near each base vector
         train_hvs = []
         train_labels = []
+        noise_key = jax.random.PRNGKey(99)
         for class_idx in range(3):
-            for _ in range(10):
-                noise = vsa.random(jax.random.split(key)[0], (1000,)) * 0.1
+            for j in range(10):
+                noise_key, subkey = jax.random.split(noise_key)
+                noise = jax.random.normal(subkey, (1000,)) * 0.1
                 sample = base_vectors[class_idx] + noise
-                # Normalize
                 sample = sample / jnp.linalg.norm(sample)
                 train_hvs.append(sample)
                 train_labels.append(class_idx)
@@ -169,12 +172,9 @@ class TestCentroidClassifier:
         train_hvs = jnp.stack(train_hvs)
         train_labels = jnp.array(train_labels)
 
-        # Fit and test
         trained_classifier = classifier.fit(train_hvs, train_labels)
         accuracy = trained_classifier.score(train_hvs, train_labels)
-
-        # Should achieve reasonable accuracy on separable data
-        assert accuracy > 0.5
+        assert float(accuracy) > 0.9
 
     def test_update_online(self):
         """Test online update with a single sample."""
@@ -357,23 +357,23 @@ class TestAdaptiveHDC:
         assert 0.0 <= score <= 1.0
 
     def test_adaptive_improves_with_epochs(self):
-        """Test that multiple epochs can improve accuracy."""
+        """Test that multiple epochs achieve good accuracy on separable data."""
         vsa = MAP.create(dimensions=500)
         classifier = AdaptiveHDC.create(
             num_classes=3, dimensions=500, vsa_model=vsa, key=jax.random.PRNGKey(42)
         )
 
-        # Create separable training data
         key = jax.random.PRNGKey(0)
         proto_keys = jax.random.split(key, 3)
-
         base_vectors = [vsa.random(proto_keys[i], (500,)) for i in range(3)]
 
         train_hvs = []
         train_labels = []
+        noise_key = jax.random.PRNGKey(99)
         for class_idx in range(3):
             for _ in range(10):
-                noise = vsa.random(jax.random.split(key)[0], (500,)) * 0.1
+                noise_key, subkey = jax.random.split(noise_key)
+                noise = jax.random.normal(subkey, (500,)) * 0.1
                 sample = base_vectors[class_idx] + noise
                 sample = sample / jnp.linalg.norm(sample)
                 train_hvs.append(sample)
@@ -382,16 +382,9 @@ class TestAdaptiveHDC:
         train_hvs = jnp.stack(train_hvs)
         train_labels = jnp.array(train_labels)
 
-        # Train with different epochs
-        classifier_1epoch = classifier.fit(train_hvs, train_labels, epochs=1)
         classifier_5epochs = classifier.fit(train_hvs, train_labels, epochs=5)
-
-        acc_1epoch = classifier_1epoch.score(train_hvs, train_labels)
-        acc_5epochs = classifier_5epochs.score(train_hvs, train_labels)
-
-        # Both should achieve reasonable accuracy (not testing improvement due to randomness)
-        assert acc_1epoch > 0.3
-        assert acc_5epochs > 0.3
+        acc = classifier_5epochs.score(train_hvs, train_labels)
+        assert float(acc) > 0.8
 
     def test_immutability(self):
         """Test that operations return new instances."""
@@ -475,6 +468,21 @@ class TestLVQClassifier:
         score = clf.score(train_hvs, train_labels)
         assert 0.0 <= float(score) <= 1.0
 
+    def test_creation_default_key(self):
+        """Cover key=None branch in LVQClassifier.create."""
+        clf = LVQClassifier.create(num_classes=3, dimensions=100)
+        assert clf.prototypes.shape == (3, 100)
+
+    def test_fit_bsc_bundle_branch(self):
+        """Cover BSC bundle branch in LVQ fit."""
+        clf = LVQClassifier.create(
+            num_classes=2, dimensions=100, vsa_model="bsc", key=jax.random.PRNGKey(42)
+        )
+        train_hvs = jax.random.bernoulli(jax.random.PRNGKey(0), 0.5, (20, 100)).astype(jnp.float32)
+        train_labels = jnp.array([i % 2 for i in range(20)])
+        clf = clf.fit(train_hvs, train_labels, epochs=1, lr=0.1)
+        assert clf.prototypes.shape == (2, 100)
+
     def test_predict_with_bsc(self):
         """Test LVQ predict with BSC model."""
         clf = LVQClassifier.create(
@@ -535,3 +543,64 @@ class TestRegularizedLSClassifier:
         pred = clf.predict(single)
         assert pred.shape == ()
         assert 0 <= int(pred) < 4
+
+
+class TestClusteringModel:
+    """Tests for ClusteringModel."""
+
+    def test_creation(self):
+        model = ClusteringModel.create(num_clusters=3, dimensions=100)
+        assert model.num_clusters == 3
+        assert model.dimensions == 100
+        assert model.centroids.shape == (3, 100)
+
+    def test_fit(self):
+        key = jax.random.PRNGKey(42)
+        k1, k2, k3 = jax.random.split(key, 3)
+        cluster0 = jax.random.normal(k1, (20, 100)) + 5.0
+        cluster1 = jax.random.normal(k2, (20, 100)) - 5.0
+        hvs = jnp.concatenate([cluster0, cluster1], axis=0)
+        norms = jnp.linalg.norm(hvs, axis=-1, keepdims=True)
+        hvs = hvs / norms
+
+        model = ClusteringModel.create(num_clusters=2, dimensions=100, key=k3)
+        model = model.fit(hvs, max_iters=20)
+        assert model.centroids.shape == (2, 100)
+
+    def test_predict(self):
+        key = jax.random.PRNGKey(42)
+        k1, k2, k3 = jax.random.split(key, 3)
+        cluster0 = jax.random.normal(k1, (20, 100)) + 5.0
+        cluster1 = jax.random.normal(k2, (20, 100)) - 5.0
+        hvs = jnp.concatenate([cluster0, cluster1], axis=0)
+        norms = jnp.linalg.norm(hvs, axis=-1, keepdims=True)
+        hvs = hvs / norms
+
+        model = ClusteringModel.create(num_clusters=2, dimensions=100, key=k3)
+        model = model.fit(hvs, max_iters=20)
+        labels = model.predict(hvs)
+        assert labels.shape == (40,)
+        assert jnp.all((labels == 0) | (labels == 1))
+        labels_0 = labels[:20]
+        labels_1 = labels[20:]
+        assert jnp.sum(labels_0 == labels_0[0]) >= 15
+        assert jnp.sum(labels_1 == labels_1[0]) >= 15
+
+    def test_predict_single(self):
+        model = ClusteringModel.create(num_clusters=3, dimensions=50)
+        query = jax.random.normal(jax.random.PRNGKey(0), (50,))
+        pred = model.predict(query)
+        assert 0 <= int(pred) < 3
+
+    def test_create_with_vsa_model_instance(self):
+        """Cover vsa_model.name branch in ClusteringModel.create."""
+        vsa = MAP.create(dimensions=100)
+        model = ClusteringModel.create(num_clusters=3, dimensions=100, vsa_model=vsa)
+        assert model.vsa_model_name == "map"
+
+    def test_replace(self):
+        """Cover ClusteringModel.replace."""
+        model = ClusteringModel.create(num_clusters=2, dimensions=50)
+        new_centroids = jnp.ones((2, 50))
+        updated = model.replace(centroids=new_centroids)
+        assert jnp.allclose(updated.centroids, 1.0)

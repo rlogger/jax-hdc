@@ -16,3 +16,10 @@ HopfieldMemory
 .. autoclass:: jax_hdc.memory.HopfieldMemory
    :members:
    :undoc-members:
+
+AttentionMemory
+---------------
+
+.. autoclass:: jax_hdc.memory.AttentionMemory
+   :members:
+   :undoc-members:

@@ -3,6 +3,8 @@ VSA Models
 
 The ``jax_hdc.vsa`` module provides Vector Symbolic Architecture model implementations.
 
+All models share the same API: ``bind``, ``bundle``, ``inverse``, ``similarity``, ``random``.
+
 Base Class
 ----------
 
@@ -38,35 +40,35 @@ Fourier HRR
    :members:
    :undoc-members:
 
+Binary Sparse Block Codes
+--------------------------
+
+.. autoclass:: jax_hdc.vsa.BSBC
+   :members:
+   :undoc-members:
+
+Cyclic Group Representation
+----------------------------
+
+.. autoclass:: jax_hdc.vsa.CGR
+   :members:
+   :undoc-members:
+
+Modular Composite Representation
+---------------------------------
+
+.. autoclass:: jax_hdc.vsa.MCR
+   :members:
+   :undoc-members:
+
+Vector-Derived Transformation Binding
+--------------------------------------
+
+.. autoclass:: jax_hdc.vsa.VTB
+   :members:
+   :undoc-members:
+
 Factory Function
 ----------------
 
 .. autofunction:: jax_hdc.vsa.create_vsa_model
-
-Example Usage
--------------
-
-Creating models::
-
-   from jax_hdc import BSC, MAP, HRR, FHRR
-   import jax
-
-   key = jax.random.PRNGKey(42)
-
-   # Binary Spatter Codes
-   bsc = BSC.create(dimensions=10000)
-   x = bsc.random(key, (10000,))
-   y = bsc.random(key, (10000,))
-   bound = bsc.bind(x, y)
-
-   # MAP
-   map_model = MAP.create(dimensions=10000)
-   x = map_model.random(key, (10000,))
-   y = map_model.random(key, (10000,))
-   bound = map_model.bind(x, y)
-
-Using factory function::
-
-   from jax_hdc.vsa import create_vsa_model
-
-   model = create_vsa_model('map', dimensions=10000)

@@ -44,6 +44,9 @@ docs/_build/
 .mypy_cache/
 .dmypy.json
 
+# Ruff
+.ruff_cache/
+
 # Profiling
 *.prof
 

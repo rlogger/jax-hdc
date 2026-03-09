@@ -1,0 +1,535 @@
+\documentclass[twoside,11pt]{article}
+\usepackage{jmlr2e}
+
+% Additional packages
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage{listings}
+
+% Code listings configuration
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    showstringspaces=false,
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    captionpos=b
+}
+
+% JMLR heading
+\jmlrheading{1}{2026}{1-30}{1/26}{0/00}{25-000}{Singh}
+
+% Short headings for running headers
+\ShortHeadings{JAX-HDC: High-Performance HDC with Hardware Acceleration}{Singh}
+
+\firstpageno{1}
+
+\begin{document}
+
+\title{JAX-HDC: A High-Performance JAX Library for \\ Hyperdimensional Computing and Vector Symbolic Architectures}
+
+\author{\name Rajdeep Singh \email rajdeeps@usc.edu \\
+       \addr Department of Computer Science\\
+       University of Southern California\\
+       Los Angeles, CA 90089, USA\\
+       \\
+       \name Fritz Sommer \email fsommer@berkeley.edu \\
+       \addr UC Berkeley\\
+       Redwood Center for Theoretical Neuroscience\\
+       Berkeley, CA 94720, USA}
+
+\maketitle
+
+\begin{abstract}
+We introduce JAX-HDC, an open-source Python library for hyperdimensional computing (HDC) and vector symbolic architectures (VSA) built on JAX. The library implements eight VSA models---Binary Spatter Codes (BSC), Multiply-Add-Permute (MAP), Holographic Reduced Representations (HRR), Fourier HRR (FHRR), Binary Sparse Block Codes (BSBC), Cyclic Group Representations (CGR), Modular Composite Representations (MCR), and Vector-Derived Transformation Binding (VTB)---all sharing a uniform dataclass-based API compatible with JAX transformations (\texttt{jit}, \texttt{vmap}, \texttt{grad}). Beyond core operations, JAX-HDC provides composite encodings (n-grams, sequences, hash tables, graph encoding, resonator networks), symbolic data structures (multisets, hash tables, sequences, graphs), five feature encoders, five learning models including clustering, three associative memory modules, and a statistical metrics module for capacity analysis and representation diagnostics. By building on JAX's XLA backend, all operations are JIT-compilable and run without modification on CPUs, GPUs, and TPUs. The library is open source under the MIT license at \url{https://github.com/rlogger/jax-hdc}.
+\end{abstract}
+
+\begin{keywords}
+Hyperdimensional Computing, Vector Symbolic Architectures, JAX, XLA Compilation, Hardware Acceleration
+\end{keywords}
+
+\section{Introduction}
+
+Hyperdimensional computing (HDC), also known as vector symbolic architectures (VSA), is a computational framework that exploits properties of high-dimensional random vector spaces to perform symbolic reasoning through distributed representations \citep{kanerva2009hyperdimensional, gayler2003vector}. Symbols are represented as high-dimensional vectors (typically $d \geq 10{,}000$), and algebraic operations---\emph{binding}, \emph{bundling}, and \emph{permutation}---compose and manipulate these representations while preserving semantic structure \citep{plate1995holographic, kanerva2010dollar}.
+
+Interest in HDC has grown substantially in recent years, driven by comprehensive theoretical surveys \citep{kleyko2022survey1, kleyko2022survey2}, successful applications in classification \citep{rahimi2016robust}, speech recognition \citep{imani2017voicehd}, and robotics \citep{neubert2019introduction}, and recognition of HDC's suitability for neuromorphic and edge hardware \citep{kleyko2022vector}. Neuro-symbolic architectures that combine HDC with neural networks have shown further promise \citep{hersche2023neuro}.
+
+Despite this progress, the VSA model landscape is fragmented. Multiple algebraic systems exist---each with distinct binding operations, inverse rules, and similarity measures---yet most software tools implement only a subset. Torchhd \citep{heddes2023torchhd} provides a comprehensive PyTorch-based library with GPU support, but does not target TPUs or leverage compiler-level optimization via XLA. hdlib \citep{cumbo2023hdlib} offers design flexibility and domain-specific models (graph encoding, regression, clustering), while PyBHV \citep{vandervorst2023pybhv} contributes a rich Boolean algebra with threshold logic, noise injection, and multiple similarity metrics. Neither targets XLA-compiled hardware.
+
+JAX-HDC addresses these gaps. Built on JAX \citep{jax2018github}, it provides:
+
+\begin{enumerate}
+\item \textbf{Eight VSA models} (BSC, MAP, HRR, FHRR, BSBC, CGR, MCR, VTB) with a uniform API, covering the major algebraic families described in \citet{kleyko2022survey1}.
+
+\item \textbf{XLA compilation} for automatic kernel fusion and hardware portability across CPUs, GPUs, and TPUs.
+
+\item \textbf{Functional design} compatible with JAX transformations: \texttt{jit} (compilation), \texttt{vmap} (vectorization), and \texttt{grad} (differentiation).
+
+\item \textbf{End-to-end tooling}: composite encodings (n-grams, sequences, hash tables, graphs, resonator networks), symbolic data structures (multisets, sequences, graphs), five feature encoders, five learning models (including clustering), three associative memory modules, and a statistical metrics module for capacity estimation and representation diagnostics.
+\end{enumerate}
+
+The remainder of this paper describes the library architecture (Section~\ref{sec:system}), provides usage examples (Section~\ref{sec:examples}), discusses related work (Section~\ref{sec:related}), and concludes with future directions (Section~\ref{sec:conclusion}).
+
+\section{The JAX-HDC System}
+\label{sec:system}
+
+\subsection{Design Principles}
+
+JAX-HDC is built on four principles:
+
+\begin{enumerate}
+\item \textbf{Functional purity.} All operations are pure functions with no hidden state. VSA models, encoders, classifiers, and memory modules are implemented as frozen dataclasses registered with \texttt{jax.tree\_util}, making them compatible with JAX transformations. Mutation returns new instances.
+
+\item \textbf{Uniform API.} Every VSA model implements the same interface---\texttt{create}, \texttt{random}, \texttt{bind}, \texttt{bundle}, \texttt{inverse}, and \texttt{similarity}---enabling model-agnostic code and systematic comparison.
+
+\item \textbf{Performance by default.} Operations are decorated with \texttt{@jax.jit} where appropriate, and the library is structured to maximize XLA kernel fusion. Users obtain compiled performance without manual optimization.
+
+\item \textbf{JAX version compatibility.} A compatibility layer (\texttt{\_compat.py}) handles API differences across JAX versions for \texttt{register\_dataclass}, ensuring the library works with \texttt{jax >= 0.4.20}.
+\end{enumerate}
+
+\subsection{Library Architecture}
+
+JAX-HDC consists of eight modules. Table~\ref{tab:modules} summarizes the components.
+
+\begin{table}[t]
+\centering
+\caption{JAX-HDC module overview.}
+\label{tab:modules}
+\begin{tabular}{lll}
+\toprule
+\textbf{Module} & \textbf{Purpose} & \textbf{Components} \\
+\midrule
+\texttt{functional} & Core HDC operations & bind, bundle, permute, similarity, n-grams, \\
+ & & sequences, hash table, resonator, quantize \\
+\texttt{vsa} & VSA model classes & BSC, MAP, HRR, FHRR, BSBC, CGR, MCR, VTB \\
+\texttt{embeddings} & Data $\to$ HV encoders & Random, Level, Projection, Kernel, Graph \\
+\texttt{structures} & Symbolic data structs & Multiset, HashTable, Sequence, Graph \\
+\texttt{models} & Learning models & Centroid, Adaptive, LVQ, RegLS, Clustering \\
+\texttt{memory} & Associative memory & SDM, Hopfield, Attention \\
+\texttt{metrics} & Capacity \& diagnostics & SNR, capacity, PR, sparsity, confidence \\
+\texttt{utils} & Utilities & normalize, benchmark\_function \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Module 1: \texttt{jax\_hdc.functional}}
+
+The \texttt{functional} module implements the core algebraic operations for each VSA family as standalone, JIT-compiled functions:
+
+\begin{itemize}
+\item \textbf{Binding} creates a vector dissimilar to both inputs. Implementations: XOR (BSC), element-wise multiplication (MAP), circular convolution via FFT (HRR), modular addition (CGR/MCR), and matrix multiplication of reshaped $\sqrt{d} \times \sqrt{d}$ blocks (VTB).
+\item \textbf{Bundling} aggregates vectors into a representation similar to all inputs. Implementations: majority vote (BSC), normalized sum (MAP/HRR/VTB), component-wise mode (CGR), and phasor sum with snap-to-grid (MCR).
+\item \textbf{Inverse} enables unbinding. Implementations: identity (BSC), element-wise reciprocal (MAP), element reversal (HRR), modular negation (CGR/MCR), and matrix pseudoinverse (VTB).
+\item \textbf{Similarity} measures relatedness. Implementations: normalized Hamming distance (BSC), cosine similarity (MAP/HRR/VTB), element matching fraction (CGR), and phasor inner product (MCR).
+\item \textbf{Permutation} encodes sequence position via cyclic shift.
+\item \textbf{Cleanup} retrieves the nearest vector from a memory set by similarity search.
+\end{itemize}
+
+Beyond the per-model primitives, the module provides:
+
+\begin{itemize}
+\item \textbf{Multi-vector operations:} \texttt{multibind} reduces $n$ vectors via binding; \texttt{cross\_product} computes all pairwise bindings between two sets.
+\item \textbf{Composite encodings:} \texttt{hash\_table} bundles bound key--value pairs; \texttt{ngrams} computes position-encoded $n$-grams; \texttt{bundle\_sequence} and \texttt{bind\_sequence} produce order-preserving representations; \texttt{graph\_encode} encodes edge lists into a single vector.
+\item \textbf{Resonator network:} Iterative factorization of a composite hypervector into codebook factors \citep{frady2020resonator}.
+\item \textbf{Additional similarity metrics:} Jaccard and Tversky indices for binary vectors, inspired by PyBHV \citep{vandervorst2023pybhv}.
+\item \textbf{Selection and threshold:} \texttt{select} (element-wise MUX), \texttt{threshold} (at-least-$t$-of-$n$), and \texttt{window} (count in $[\ell, h]$), generalizing majority voting.
+\item \textbf{Noise injection:} \texttt{flip\_fraction} flips a controlled fraction of bits; \texttt{add\_noise\_map} adds Gaussian noise and re-normalizes.
+\item \textbf{Fractional power:} \texttt{fractional\_power} raises a MAP hypervector to a fractional exponent ($\text{sign}(x) \cdot |x|^p$), enabling smooth interpolation for continuous attribute encoding---a key primitive for real-world data like time series and financial features.
+\item \textbf{Quantization:} \texttt{soft\_quantize} (tanh) and \texttt{hard\_quantize} (sign).
+\end{itemize}
+
+Batch variants (\texttt{batch\_bind\_bsc}, \texttt{batch\_cosine\_similarity}, etc.) are provided via \texttt{jax.vmap}.
+
+\subsubsection{Module 2: \texttt{jax\_hdc.vsa}}
+
+The \texttt{vsa} module defines eight VSA model classes, each wrapping the corresponding \texttt{functional} operations behind a uniform interface. Table~\ref{tab:models} summarizes the models and their algebraic properties.
+
+\begin{table}[t]
+\centering
+\caption{VSA models implemented in JAX-HDC. All share the interface: \texttt{create}, \texttt{random}, \texttt{bind}, \texttt{bundle}, \texttt{inverse}, \texttt{similarity}.}
+\label{tab:models}
+\begin{tabular}{llllll}
+\toprule
+\textbf{Model} & \textbf{Domain} & \textbf{Bind} & \textbf{Bundle} & \textbf{Similarity} \\
+\midrule
+BSC & $\{0,1\}^d$ & XOR & Majority & Hamming \\
+MAP & $\mathbb{R}^d$ & $x \odot y$ & Norm.\ sum & Cosine \\
+HRR & $\mathbb{R}^d$ & Circ.\ conv. & Norm.\ sum & Cosine \\
+FHRR & $\mathbb{C}^d$ & $x \odot y$ & Norm.\ sum & Cosine \\
+BSBC & $\{0,1\}^d$ (sparse) & XOR & Majority & Hamming \\
+CGR & $\mathbb{Z}_q^d$ & $(x+y) \bmod q$ & Mode & Matching \\
+MCR & $\mathbb{Z}_q^d$ & $(x+y) \bmod q$ & Phasor sum & Phasor \\
+VTB & $\mathbb{R}^d$ & $\text{mat}(x) \cdot \text{mat}(y)$ & Norm.\ sum & Cosine \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All models are frozen dataclasses registered as JAX pytrees. A factory function \texttt{create\_vsa\_model(model\_type, dimensions)} provides string-based model construction. BSBC supports configurable block size and sparsity (\texttt{k\_active} ones per block). CGR and MCR accept a parameter $q$ controlling the cyclic group order. VTB requires $d$ to be a perfect square.
+
+\subsubsection{Module 3: \texttt{jax\_hdc.embeddings}}
+
+Five encoder classes transform raw data into hypervectors:
+
+\begin{itemize}
+\item \textbf{RandomEncoder}: Maps discrete feature indices to random hypervectors via a codebook of shape \texttt{(num\_features, num\_values, dimensions)}, then bundles across features. Supports BSC and MAP models.
+\item \textbf{LevelEncoder}: Encodes continuous values by linear interpolation between adjacent level hypervectors, producing smooth representations where similar values map to similar vectors.
+\item \textbf{ProjectionEncoder}: Projects high-dimensional inputs through a random matrix ($\mathbb{R}^{n \times d}$), normalized by $1/\sqrt{n}$. Useful for images, embeddings, and other continuous data.
+\item \textbf{KernelEncoder}: Approximates the RBF kernel $k(x,y) = \exp(-\gamma \|x-y\|^2)$ via random Fourier features \citep{rahimi2007random}, preserving kernel similarity in hypervector space.
+\item \textbf{GraphEncoder}: Represents graph structure by assigning random hypervectors to nodes and bundling bound node pairs for each edge.
+\end{itemize}
+
+RandomEncoder, LevelEncoder, ProjectionEncoder, and KernelEncoder provide \texttt{encode} and \texttt{encode\_batch} methods (the latter via \texttt{jax.vmap}). GraphEncoder provides \texttt{encode\_edges} for graph-structured input.
+
+\subsubsection{Module 4: \texttt{jax\_hdc.structures}}
+
+Four symbolic data structures are built on top of the functional operations, inspired by the structures module in Torchhd \citep{heddes2023torchhd}:
+
+\begin{itemize}
+\item \textbf{Multiset}: Maintains a running sum of added hypervectors. Supports \texttt{add}, \texttt{remove}, and \texttt{contains} (cosine similarity query).
+\item \textbf{HashTable}: Stores key--value pairs via binding and retrieves approximate values by unbinding with a query key. Supports \texttt{add}, \texttt{remove}, \texttt{get}, and batch construction via \texttt{from\_pairs}.
+\item \textbf{Sequence}: Order-preserving structure via positional permutation before bundling. Supports incremental \texttt{append} and batch \texttt{from\_vectors}.
+\item \textbf{Graph}: Encodes edges as bound node pairs (with positional permutation for directed graphs). Supports \texttt{add\_edge}, \texttt{neighbors}, and \texttt{contains\_edge}.
+\end{itemize}
+
+All structures are frozen JAX-compatible dataclasses; mutation returns new instances.
+
+\subsubsection{Module 5: \texttt{jax\_hdc.models}}
+
+Five learning models are provided:
+
+\begin{itemize}
+\item \textbf{CentroidClassifier}: One-shot learning by computing class centroids (majority vote for BSC, normalized mean for real-valued models). Supports online updates with configurable learning rate. Provides \texttt{predict}, \texttt{predict\_proba}, \texttt{score}, and \texttt{fit} methods.
+\item \textbf{AdaptiveHDC}: Multi-epoch iterative refinement. After initial centroid computation, misclassified samples update the true-class prototype \citep{imani2017voicehd}.
+\item \textbf{LVQClassifier}: Learning Vector Quantization. Updates the winning prototype toward or away from the sample depending on correctness.
+\item \textbf{RegularizedLSClassifier}: Solves $(X^\top X + \lambda I) W = X^\top Y$ for weight matrix $W$, providing a closed-form linear classifier in hypervector space.
+\item \textbf{ClusteringModel}: HDC-style $k$-means clustering, inspired by the clustering model in hdlib \citep{cumbo2023hdlib}. Iteratively assigns hypervectors to the nearest centroid by cosine similarity and updates centroids by normalized bundling. Supports \texttt{fit} and \texttt{predict}.
+\end{itemize}
+
+All models follow the same pattern: \texttt{create} $\to$ \texttt{fit} $\to$ \texttt{predict}/\texttt{score}, returning new instances on mutation.
+
+\subsubsection{Module 6: \texttt{jax\_hdc.memory}}
+
+Three associative memory modules are implemented:
+
+\begin{itemize}
+\item \textbf{SparseDistributedMemory (SDM)}: Content-addressable memory with random address locations and a configurable activation radius \citep{kanerva1988sparse}. Supports \texttt{write} and \texttt{read} operations; read returns a normalized weighted sum over matching locations.
+\item \textbf{HopfieldMemory}: Modern continuous Hopfield network \citep{ramsauer2020hopfield} with softmax-weighted retrieval over stored patterns. Temperature parameter $\beta$ controls retrieval sharpness. Patterns are added incrementally via \texttt{add}.
+\item \textbf{AttentionMemory}: Key-value store with scaled dot-product attention retrieval. Supports multi-head attention (configurable \texttt{num\_heads}) and temperature scaling. Provides \texttt{write}, \texttt{write\_batch}, \texttt{retrieve}, and \texttt{retrieve\_with\_weights}.
+\end{itemize}
+
+\subsubsection{Module 7: \texttt{jax\_hdc.metrics}}
+
+The \texttt{metrics} module provides statistical tools for analysing hypervector representations and sizing HDC systems:
+
+\begin{itemize}
+\item \textbf{bundle\_snr}: Expected signal-to-noise ratio after bundling $n$ MAP vectors in $d$ dimensions, $\text{SNR} = \sqrt{d/(n-1)}$.
+\item \textbf{bundle\_capacity}: Conservative upper bound on the number of vectors that can be bundled before retrieval probability drops below $1 - \delta$.
+\item \textbf{effective\_dimensions}: Participation ratio $\text{PR} = (\sum x_i^2)^2 / \sum x_i^4$, measuring how many dimensions carry signal.  PR $= d$ for a uniform vector; PR $= 1$ for a one-hot vector.
+\item \textbf{sparsity}: Fraction of near-zero elements in a hypervector.
+\item \textbf{signal\_energy}: Squared L2 norm, for monitoring representation magnitude.
+\item \textbf{saturation}: Fraction of elements near $\pm 1$, indicating quantisation level.
+\item \textbf{cosine\_matrix}: Pairwise cosine similarity matrix for codebook orthogonality checks.
+\item \textbf{retrieval\_confidence}: Gap between the best and second-best cosine similarity to a codebook, measuring retrieval certainty.
+\end{itemize}
+
+These metrics are essential for real-world deployments where practitioners need to (a)~select an appropriate dimensionality for a given capacity requirement, (b)~diagnose collapsed or degenerate representations, and (c)~assess retrieval reliability before acting on HDC outputs.
+
+\subsubsection{Module 8: \texttt{jax\_hdc.utils}}
+
+The \texttt{utils} module provides two functions: \texttt{normalize} (unit-length normalization along a specified axis) and \texttt{benchmark\_function} (timing with configurable warmup and trial counts, reporting mean, std, min, max, and median in milliseconds).
+
+\subsection{Comparison with Existing Software}
+
+Table~\ref{tab:comparison} compares JAX-HDC with existing HDC libraries.
+
+\begin{table}[t]
+\centering
+\caption{Comparison of HDC/VSA software libraries.}
+\label{tab:comparison}
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Library} & \textbf{VSA} & \textbf{XLA} & \textbf{Auto-diff} & \textbf{Functional} & \textbf{TPU} & \textbf{Structures} \\
+\midrule
+Torchhd \citep{heddes2023torchhd} & 10+ & $\times$ & \checkmark & $\times$ & $\times$ & \checkmark \\
+hdlib \citep{cumbo2023hdlib} & 2 & $\times$ & $\times$ & $\times$ & $\times$ & $\times$ \\
+PyBHV \citep{vandervorst2023pybhv} & 1 & $\times$ & $\times$ & $\times$ & $\times$ & $\times$ \\
+\textbf{JAX-HDC} & 8 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+JAX-HDC is, to our knowledge, the first HDC library built on JAX, providing XLA compilation, TPU support, and a functional programming interface. Torchhd offers the broadest model coverage and a mature ecosystem; hdlib provides domain-specific models for bioinformatics and graph classification; PyBHV contributes a rich Boolean algebra with threshold logic and symbolic analysis. JAX-HDC unifies ideas from all three, targeting the JAX ecosystem and XLA-optimized hardware.
+
+\section{Usage Examples}
+\label{sec:examples}
+
+\subsection{Basic Operations}
+
+Listing~\ref{lst:basic} demonstrates fundamental HDC operations with the MAP model.
+
+\begin{lstlisting}[caption={Basic HDC operations},label={lst:basic}]
+import jax
+from jax_hdc import MAP
+from jax_hdc.functional import permute
+
+model = MAP.create(dimensions=10000)
+key = jax.random.PRNGKey(42)
+
+# Generate two random hypervectors
+k1, k2 = jax.random.split(key)
+x = model.random(k1, (10000,))
+y = model.random(k2, (10000,))
+
+# Binding: result is dissimilar to both inputs
+bound = model.bind(x, y)
+print(model.similarity(x, bound))  # ~0.0
+
+# Bundling: result is similar to all inputs
+vectors = model.random(key, (5, 10000))
+bundled = model.bundle(vectors, axis=0)
+
+# Unbinding with inverse
+y_inv = model.inverse(y)
+recovered = model.bind(bound, y_inv)
+
+# Sequence encoding via permutation
+a, b, c = model.random(key, (3, 10000))
+sequence = permute(a, 2) + permute(b, 1) + c
+\end{lstlisting}
+
+\subsection{Classification Pipeline}
+
+Listing~\ref{lst:classification} shows an end-to-end encode--train--predict pipeline.
+
+\begin{lstlisting}[caption={Classification with RandomEncoder and CentroidClassifier},label={lst:classification}]
+import jax
+import jax.numpy as jnp
+from jax_hdc import MAP
+from jax_hdc.embeddings import RandomEncoder
+from jax_hdc.models import CentroidClassifier
+
+model = MAP.create(dimensions=10000)
+key = jax.random.PRNGKey(42)
+
+# Create encoder and classifier
+encoder = RandomEncoder.create(
+    num_features=20, num_values=10,
+    dimensions=10000, vsa_model=model, key=key,
+)
+classifier = CentroidClassifier.create(
+    num_classes=5, dimensions=10000, vsa_model=model,
+)
+
+# Generate synthetic data
+train_data = jax.random.randint(key, (500, 20), 0, 10)
+train_labels = jnp.sum(train_data[:, :3], axis=1) % 5
+
+# Encode, train, evaluate
+train_hvs = encoder.encode_batch(train_data)
+classifier = classifier.fit(train_hvs, train_labels)
+accuracy = classifier.score(train_hvs, train_labels)
+print(f"Accuracy: {accuracy:.2%}")
+\end{lstlisting}
+
+\subsection{Associative Memory}
+
+Listing~\ref{lst:memory} demonstrates the attention-based memory module.
+
+\begin{lstlisting}[caption={Attention-based associative memory},label={lst:memory}]
+import jax
+from jax_hdc.memory import AttentionMemory
+
+key = jax.random.PRNGKey(42)
+mem = AttentionMemory.create(
+    dimensions=1000, temperature=0.1, num_heads=4,
+)
+
+# Store key-value pairs
+keys = jax.random.normal(key, (10, 1000))
+values = jax.random.normal(jax.random.split(key)[1], (10, 1000))
+mem = mem.write_batch(keys, values)
+
+# Retrieve by query similarity
+result = mem.retrieve(keys[0])
+result, weights = mem.retrieve_with_weights(keys[0])
+\end{lstlisting}
+
+\section{Related Work}
+\label{sec:related}
+
+\textbf{HDC/VSA Foundations.} The theoretical foundations were established by \citet{kanerva1988sparse, kanerva2009hyperdimensional} for sparse distributed representations and Binary Spatter Codes, and by \citet{plate1991holographic, plate1995holographic} for Holographic Reduced Representations. Recent surveys \citep{kleyko2022survey1, kleyko2022survey2} provide comprehensive coverage of models, data transformations, applications, and open challenges.
+
+\textbf{Software.} Torchhd \citep{heddes2023torchhd} is the most mature HDC library, built on PyTorch with GPU support and broad model coverage. hdlib \citep{cumbo2023hdlib} provides a design-oriented Python library with domain-specific models for bioinformatics, graph encoding, regression, and clustering. PyBHV \citep{vandervorst2023pybhv} contributes a Boolean hypervector framework with threshold logic, Tversky and Jaccard metrics, noise injection, and symbolic analysis. JAX-HDC incorporates ideas from all three---composite encodings and structures from Torchhd, clustering from hdlib, and similarity metrics and threshold operations from PyBHV---while targeting the JAX ecosystem with XLA compilation and TPU support.
+
+\textbf{Applications.} HDC has been applied to classification \citep{rahimi2016robust}, speech recognition \citep{imani2017voicehd}, robotics \citep{neubert2019introduction}, neuromorphic hardware \citep{kleyko2022vector}, and neuro-symbolic reasoning \citep{hersche2023neuro}.
+
+\textbf{Learning Algorithms.} Adaptive training procedures for HDC include online prototype refinement \citep{imani2021onlinehd} and gradient-based encoder learning \citep{kim2024flash}. JAX-HDC's native autodiff support via \texttt{jax.grad} facilitates implementing such methods.
+
+\section{Conclusions and Future Work}
+\label{sec:conclusion}
+
+JAX-HDC provides a complete toolkit for hyperdimensional computing research and deployment on JAX: eight VSA models with a uniform API, composite encodings (n-grams, sequences, hash tables, graph encoding, resonator networks), symbolic data structures (multisets, hash tables, sequences, graphs), five feature encoders, five learning models (including clustering), three associative memory modules, and a statistical metrics module for capacity analysis and representation diagnostics---all JIT-compilable and portable across CPUs, GPUs, and TPUs. Additional operations drawn from hdlib and PyBHV---Jaccard and Tversky similarity, threshold voting, noise injection, fractional power encoding, and quantization---broaden the library's practical capabilities for real-world applications in fast similarity search, streaming classification, and continuous data encoding.
+
+Planned extensions include:
+
+\begin{enumerate}
+\item \textbf{Mixed-precision training} (BF16/FP16) for increased throughput.
+\item \textbf{Neural-HDC hybrids} via integration with Flax/Equinox.
+\item \textbf{Benchmark suite} with standard HDC datasets (EU Languages, ISOLET, EMG gestures) for reproducible evaluation.
+\item \textbf{Distributed training} via \texttt{pmap} and model parallelism across multi-device setups.
+\end{enumerate}
+
+JAX-HDC is open source under the MIT license at \url{https://github.com/rlogger/jax-hdc}.
+
+\section*{Acknowledgments}
+
+We thank the JAX development team at Google, the Torchhd authors, the hdlib authors, and Adam Vandervorst (PyBHV) for their foundational work that informed and inspired aspects of this library.
+
+\bibliographystyle{plainnat}
+\begin{thebibliography}{99}
+
+\bibitem[Frady et~al.(2020)]{frady2020resonator}
+E.~P. Frady, S.~J. Kent, B.~A. Olshausen, and F.~T. Sommer.
+\newblock Resonator networks, 1: An efficient solution for factoring high-dimensional, distributed representations of data structures.
+\newblock \textit{Neural Computation}, 32(12):2311--2331, 2020.
+
+\bibitem[Gayler(2003)]{gayler2003vector}
+R.~W. Gayler.
+\newblock Vector symbolic architectures answer {J}ackendoff's challenges for cognitive neuroscience.
+\newblock In \textit{Joint International Conference on Cognitive Science}, pages 133--138, 2003.
+
+\bibitem[Heddes et~al.(2023)]{heddes2023torchhd}
+M.~Heddes, I.~Nunes, P.~Verg\'es, D.~Kleyko, D.~Abraham, T.~Givargis, A.~Nicolau, and A.~Veidenbaum.
+\newblock Torchhd: An open source {P}ython library to support research on hyperdimensional computing and vector symbolic architectures.
+\newblock \textit{Journal of Machine Learning Research}, 24(255):1--10, 2023.
+
+\bibitem[Hersche et~al.(2023)]{hersche2023neuro}
+M.~Hersche, M.~Zeqiri, L.~Benini, A.~Sebastian, and A.~Rahimi.
+\newblock A neuro-vector-symbolic architecture for solving {R}aven's progressive matrices.
+\newblock \textit{Nature Machine Intelligence}, 5(4):363--375, 2023.
+
+\bibitem[Imani et~al.(2017)]{imani2017voicehd}
+M.~Imani, D.~Kong, A.~Rahimi, and T.~Rosing.
+\newblock {VoiceHD}: Hyperdimensional computing for efficient speech recognition.
+\newblock In \textit{International Conference on Rebooting Computing (ICRC)}, pages 1--8, 2017.
+
+\bibitem[Imani et~al.(2021)]{imani2021onlinehd}
+M.~Imani, Y.~Kim, S.~Patil, and T.~Rosing.
+\newblock {OnlineHD}: Robust, efficient, and single-pass online learning using hyperdimensional system.
+\newblock In \textit{Design, Automation \& Test in Europe (DATE)}, pages 56--61, 2021.
+
+\bibitem[JAX Team(2018)]{jax2018github}
+JAX Team.
+\newblock {JAX}: Composable transformations of {P}ython+{N}um{P}y programs.
+\newblock \url{https://github.com/google/jax}, 2018.
+
+\bibitem[Kanerva(1988)]{kanerva1988sparse}
+P.~Kanerva.
+\newblock \textit{Sparse Distributed Memory}.
+\newblock MIT Press, Cambridge, MA, 1988.
+
+\bibitem[Kanerva(1997)]{kanerva1997fully}
+P.~Kanerva.
+\newblock Fully distributed representation.
+\newblock In \textit{Real World Computing Symposium (RWC)}, pages 358--365, 1997.
+
+\bibitem[Kanerva(2009)]{kanerva2009hyperdimensional}
+P.~Kanerva.
+\newblock Hyperdimensional computing: An introduction to computing in distributed representation with high-dimensional random vectors.
+\newblock \textit{Cognitive Computation}, 1(2):139--159, 2009.
+
+\bibitem[Kanerva(2010)]{kanerva2010dollar}
+P.~Kanerva.
+\newblock What's the dollar of {M}exico? {H}yperdimensional computing in question-answering.
+\newblock Technical report, Redwood Center for Theoretical Neuroscience, 2010.
+
+\bibitem[Kim et~al.(2024)]{kim2024flash}
+Y.~Kim, M.~Imani, B.~Moons, and T.~Rosing.
+\newblock {FLASH}: Hyperdimensional computing with holographic and adaptive encoder.
+\newblock \textit{Frontiers in Neuroscience}, 18:1--15, 2024.
+
+\bibitem[Kleyko et~al.(2022a)]{kleyko2022survey1}
+D.~Kleyko, D.~A. Rachkovskij, E.~Osipov, and A.~Rahimi.
+\newblock A survey on hyperdimensional computing aka vector symbolic architectures, {P}art {I}: Models and data transformations.
+\newblock \textit{ACM Computing Surveys}, 55(6):1--40, 2022.
+
+\bibitem[Kleyko et~al.(2022b)]{kleyko2022survey2}
+D.~Kleyko, D.~A. Rachkovskij, E.~Osipov, and A.~Rahimi.
+\newblock A survey on hyperdimensional computing aka vector symbolic architectures, {P}art {II}: Applications, cognitive models, and challenges.
+\newblock \textit{ACM Computing Surveys}, 55(9):1--52, 2022.
+
+\bibitem[Kleyko et~al.(2022c)]{kleyko2022vector}
+D.~Kleyko, M.~Davies, E.~P. Frady, P.~Kanerva, S.~J. Kent, B.~A. Olshausen, E.~Osipov, J.~M. Rabaey, D.~A. Rachkovskij, A.~Rahimi, and F.~T. Sommer.
+\newblock Vector symbolic architectures as a computing framework for emerging hardware.
+\newblock \textit{Proceedings of the IEEE}, 110(10):1538--1571, 2022.
+
+\bibitem[Cumbo et~al.(2023)]{cumbo2023hdlib}
+F.~Cumbo, E.~Weitschek, and D.~Blankenberg.
+\newblock hdlib: A {P}ython library for designing vector-symbolic architectures.
+\newblock \textit{Journal of Open Source Software}, 8(89):5704, 2023.
+
+\bibitem[Neubert et~al.(2019)]{neubert2019introduction}
+P.~Neubert, S.~Schubert, and P.~Protzel.
+\newblock An introduction to hyperdimensional computing for robotics.
+\newblock \textit{KI -- K{\"u}nstliche Intelligenz}, 33(4):319--330, 2019.
+
+\bibitem[Plate(1991)]{plate1991holographic}
+T.~A. Plate.
+\newblock Holographic reduced representations: Convolution algebra for compositional distributed representations.
+\newblock In \textit{International Joint Conference on Artificial Intelligence (IJCAI)}, pages 30--35, 1991.
+
+\bibitem[Plate(1995)]{plate1995holographic}
+T.~A. Plate.
+\newblock Holographic reduced representations.
+\newblock \textit{IEEE Transactions on Neural Networks}, 6(3):623--641, 1995.
+
+\bibitem[Rahimi and Recht(2007)]{rahimi2007random}
+A.~Rahimi and B.~Recht.
+\newblock Random features for large-scale kernel machines.
+\newblock In \textit{Advances in Neural Information Processing Systems (NIPS)}, volume~20, pages 1--8, 2007.
+
+\bibitem[Rahimi et~al.(2016)]{rahimi2016robust}
+A.~Rahimi, P.~Kanerva, and J.~M. Rabaey.
+\newblock A robust and energy-efficient classifier using brain-inspired hyperdimensional computing.
+\newblock In \textit{International Symposium on Low Power Electronics and Design (ISLPED)}, pages 64--69, 2016.
+
+\bibitem[Vandervorst(2023)]{vandervorst2023pybhv}
+A.~Vandervorst.
+\newblock {PyBHV}: Boolean hypervectors for experiments in hyperdimensional computing.
+\newblock \url{https://github.com/Adam-Vandervorst/PyBHV}, 2023.
+
+\bibitem[Ramsauer et~al.(2020)]{ramsauer2020hopfield}
+H.~Ramsauer, B.~Sch{\"a}fl, J.~Lehner, et~al.
+\newblock {H}opfield networks is all you need.
+\newblock arXiv preprint arXiv:2008.02217, 2020.
+
+\end{thebibliography}
+
+\appendix
+
+\section{Implementation Notes}
+\label{app:implementation}
+
+\subsection{JAX Dataclass Registration}
+
+All stateful objects (VSA models, encoders, classifiers, memory modules) are implemented as Python \texttt{@dataclass} instances registered with \texttt{jax.tree\_util.register\_dataclass}. Fields are partitioned into \emph{data fields} (JAX arrays, traced during compilation) and \emph{metadata fields} (static values like dimension counts and model names, marked with \texttt{metadata=dict(static=True)}). This allows JAX to trace through these objects during JIT compilation while keeping configuration fixed.
+
+\subsection{Older JAX Compatibility}
+
+The \texttt{jax.tree\_util.register\_dataclass} API changed between JAX versions. In older versions, it requires explicit \texttt{data\_fields} and \texttt{meta\_fields} lists; in newer versions, it infers them automatically. The \texttt{\_compat.py} module detects the available API at import time and provides a unified \texttt{register\_dataclass} decorator that works with \texttt{jax >= 0.4.20}.
+
+Similarly, older JAX versions do not support the \texttt{@jax.jit(static\_argnames=...)} decorator syntax. The library uses \texttt{functools.partial(jax.jit, static\_argnames=...)} for backward compatibility.
+
+\end{document}

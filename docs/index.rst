@@ -9,9 +9,10 @@ Features
 - XLA compilation and automatic kernel fusion
 - Native GPU/TPU support through JAX backend
 - Pure functional design enabling JAX transformations (jit, vmap, grad, pmap)
-- Four VSA model implementations: BSC, MAP, HRR, FHRR
-- Feature encoders for discrete, continuous, and high-dimensional data
-- Classification models with test coverage
+- Eight VSA model implementations: BSC, MAP, HRR, FHRR, BSBC, CGR, MCR, VTB
+- Feature encoders for discrete, continuous, kernel, and graph data
+- Classification models with iterative refinement
+- Memory modules: SDM, Hopfield, attention-based retrieval
 
 Quick Start
 -----------
@@ -30,7 +31,7 @@ Basic usage::
    key = jax.random.PRNGKey(42)
 
    x = model.random(key, (10000,))
-   y = model.random(key, (10000,))
+   y = model.random(jax.random.split(key)[1], (10000,))
    bound = model.bind(x, y)
    similarity = model.similarity(x, y)
 

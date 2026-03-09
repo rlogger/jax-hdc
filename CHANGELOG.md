@@ -7,33 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added (Phase 2)
-- B-SBC (Binary Sparse Block Codes) VSA model
+### Added
+- BSBC (Binary Sparse Block Codes) VSA model
+- CGR (Cyclic Group Representation) VSA model
+- MCR (Modular Composite Representation) VSA model
+- VTB (Vector-Derived Transformation Binding) VSA model
 - KernelEncoder (RBF kernel approximation via random Fourier features)
 - GraphEncoder for graph structures
 - LVQClassifier (Learning Vector Quantization)
-- RegularizedLSClassifier
-- SparseDistributedMemory and HopfieldMemory modules
+- RegularizedLSClassifier (regularized least squares)
+- SparseDistributedMemory, HopfieldMemory, and AttentionMemory modules
 - Integration tests (end-to-end encode/train/predict)
-- Performance benchmark suite (benchmarks/benchmark_operations.py)
-- Pytest benchmark marker registration
-- cleanup() with return_similarity support (static_argnames for JIT)
+- Performance benchmark suite
+- `cleanup()` with `return_similarity` support
 
-### Infrastructure
-- STATUS.md updated to reflect current test coverage (~94%)
-- Performance test threshold relaxed for AdaptiveHDC
-- Documentation build verified (Sphinx)
-
-### Planned for v0.2.0-beta
-- Additional VSA models (CGR, MCR, VTB)
-- Attention-based retrieval memory
-- ReadTheDocs hosting connection
-
-### Planned for v1.0.0
-- PyPI package publication
-- API stability guarantees
-- Comprehensive documentation
-- Production-ready performance validation
+### Changed
+- Replaced `black`/`isort`/`flake8` with `ruff` for linting and formatting
+- Removed `numpy` and `optax` from core dependencies
+- Centralized JAX dataclass registration in `_compat.py`
+- Reduced `utils.py` to `normalize` and `benchmark_function`
 
 ## [0.1.0-alpha] - 2024-11-03
 
@@ -42,30 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Four VSA model implementations: BSC, MAP, HRR, FHRR
 - Three encoder types: RandomEncoder, LevelEncoder, ProjectionEncoder
 - Two classification models: CentroidClassifier, AdaptiveHDC
-- Utility functions for device management and benchmarking
 - Unit tests for core operations and VSA models
 - Reference examples: basic operations, Kanerva's example, classification
 - Documentation structure (Sphinx/ReadTheDocs ready)
 - MIT License
-- Development tooling (pytest, black, mypy, isort, flake8)
-
-### Notes
-- **Alpha release** - API subject to change
-- Not published to PyPI (install from source only)
-- Documentation hosted in repository (ReadTheDocs pending)
-- Performance claims are predictions, not benchmarked
-- Test coverage incomplete (core operations covered)
-
-### Known Limitations
-- No encoder or classifier tests
-- No integration tests
-- No performance benchmarks
-- ReadTheDocs not configured
-- CI/CD not activated
-
-## Version History
-
-- **0.1.0-alpha** (2024-11-03): Initial alpha release
 
 [Unreleased]: https://github.com/rlogger/jax-hdc/compare/v0.1.0-alpha...HEAD
 [0.1.0-alpha]: https://github.com/rlogger/jax-hdc/releases/tag/v0.1.0-alpha

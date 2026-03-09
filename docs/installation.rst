@@ -6,8 +6,7 @@ Requirements
 
 * Python 3.9+
 * JAX 0.4.20+
-* NumPy 1.22+
-* Optax 0.1.7+
+* jaxlib 0.4.20+
 
 JAX-HDC is currently in **alpha** and is not yet published to PyPI.
 
@@ -39,10 +38,8 @@ For reproducible development environments:
 
 .. code-block:: bash
 
-   nix develop        # Enter development shell
-   nix build          # Build the package
-   nix run .#basic-operations
-   nix run .#classification-simple
+   nix develop        # Enter development shell (flakes)
+   nix-shell          # Traditional nix-shell
 
 GPU/TPU
 -------

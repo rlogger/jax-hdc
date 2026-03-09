@@ -25,12 +25,11 @@ class TestSparseDistributedMemory:
         assert sdm.locations.shape == (20, 50)
 
     def test_write_and_read(self):
-        """Test write and read operations."""
+        """Test that read recovers a vector similar to what was written."""
         key = jax.random.PRNGKey(42)
-        sdm = SparseDistributedMemory.create(num_locations=100, dimensions=100, radius=0.3, key=key)
+        sdm = SparseDistributedMemory.create(num_locations=100, dimensions=100, radius=0.5, key=key)
 
-        addr = jax.random.normal(key, (100,))
-        addr = addr / (jnp.linalg.norm(addr) + 1e-8)
+        addr = sdm.locations[0]
         val = jax.random.normal(jax.random.split(key)[1], (100,))
 
         sdm = sdm.write(addr, val)
@@ -38,6 +37,10 @@ class TestSparseDistributedMemory:
 
         assert result.shape == (100,)
         assert jnp.isfinite(result).all()
+        from jax_hdc.functional import cosine_similarity
+
+        sim = cosine_similarity(result, val)
+        assert float(sim) > 0.5
 
     def test_read_normalized_output(self):
         """Test that read returns normalized vector."""
@@ -67,8 +70,8 @@ class TestHopfieldMemory:
         assert hop.beta == 2.0
 
     def test_add_and_retrieve(self):
-        """Test adding patterns and retrieval."""
-        hop = HopfieldMemory.create(dimensions=100)
+        """Test that retrieval returns the stored pattern on a noisy query."""
+        hop = HopfieldMemory.create(dimensions=100, beta=10.0)
         p = jax.random.normal(jax.random.PRNGKey(42), (100,))
         hop = hop.add(p)
 
@@ -77,6 +80,10 @@ class TestHopfieldMemory:
 
         assert result.shape == (100,)
         assert jnp.isfinite(result).all()
+        from jax_hdc.functional import cosine_similarity
+
+        sim = cosine_similarity(result, p / jnp.linalg.norm(p))
+        assert float(sim) > 0.9
 
     def test_retrieve_empty_memory(self):
         """Test retrieve on empty memory returns zeros."""
@@ -187,3 +194,11 @@ class TestAttentionMemory:
         assert result.shape == (50,)
         assert weights.shape == (1,)
         assert jnp.allclose(weights, 1.0)
+
+    def test_retrieve_with_weights_empty(self):
+        """Cover empty-memory branch in retrieve_with_weights."""
+        mem = AttentionMemory.create(dimensions=50)
+        query = jax.random.normal(jax.random.PRNGKey(0), (50,))
+        result, weights = mem.retrieve_with_weights(query)
+        assert result.shape == (50,)
+        assert jnp.allclose(result, 0.0)

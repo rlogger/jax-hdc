@@ -449,6 +449,8 @@ def multibind_map(vectors: jax.Array, axis: int = 0) -> jax.Array:
 def multibind_bsc(vectors: jax.Array, axis: int = 0) -> jax.Array:
     """Bind all vectors along an axis via cumulative XOR (BSC).
 
+    XOR of n binary vectors: bit is 1 iff an odd number of inputs are 1.
+
     Args:
         vectors: Boolean array with shape (n, ..., d)
         axis: Axis along which to reduce (default: 0)
@@ -456,11 +458,8 @@ def multibind_bsc(vectors: jax.Array, axis: int = 0) -> jax.Array:
     Returns:
         XOR-reduction of all vectors along axis
     """
-    n = vectors.shape[axis]
-    result = jnp.take(vectors, 0, axis=axis)
-    for i in range(1, n):
-        result = jnp.logical_xor(result, jnp.take(vectors, i, axis=axis))
-    return result
+    counts = jnp.sum(vectors.astype(jnp.int32), axis=axis)
+    return (counts % 2) == 1
 
 
 def cross_product(set_a: jax.Array, set_b: jax.Array, bind_fn: Callable = bind_map) -> jax.Array:
@@ -658,6 +657,198 @@ def resonator(
     return estimates
 
 
+# ---------------------------------------------------------------------------
+# Additional similarity metrics (inspired by PyBHV)
+# ---------------------------------------------------------------------------
+
+
+@jax.jit
+def jaccard_similarity(x: jax.Array, y: jax.Array) -> jax.Array:
+    """Jaccard similarity between binary hypervectors.
+
+    |x AND y| / |x OR y|.  Returns 1 for identical vectors, ~0.33 for random.
+
+    Args:
+        x: Binary hypervector of shape (..., d)
+        y: Binary hypervector of shape (..., d)
+
+    Returns:
+        Jaccard index in [0, 1]
+    """
+    intersection = jnp.sum(jnp.logical_and(x, y).astype(jnp.float32), axis=-1)
+    union = jnp.sum(jnp.logical_or(x, y).astype(jnp.float32), axis=-1)
+    return intersection / (union + EPS)
+
+
+@jax.jit
+def tversky_similarity(
+    x: jax.Array,
+    y: jax.Array,
+    alpha: float = 1.0,
+    beta: float = 1.0,
+) -> jax.Array:
+    """Tversky similarity index between binary hypervectors.
+
+    Generalises Jaccard (alpha=beta=1) and Dice (alpha=beta=0.5).
+
+    Args:
+        x: Binary prototype hypervector of shape (..., d)
+        y: Binary variant hypervector of shape (..., d)
+        alpha: Weight for x-only elements (default: 1.0)
+        beta: Weight for y-only elements (default: 1.0)
+
+    Returns:
+        Tversky index in [0, 1]
+    """
+    x_f = x.astype(jnp.float32)
+    y_f = y.astype(jnp.float32)
+    intersection = jnp.sum(x_f * y_f, axis=-1)
+    x_only = jnp.sum(x_f * (1 - y_f), axis=-1)
+    y_only = jnp.sum((1 - x_f) * y_f, axis=-1)
+    return intersection / (intersection + alpha * x_only + beta * y_only + EPS)
+
+
+# ---------------------------------------------------------------------------
+# Selection and threshold operations (inspired by PyBHV)
+# ---------------------------------------------------------------------------
+
+
+@jax.jit
+def select_bsc(cond: jax.Array, when_true: jax.Array, when_false: jax.Array) -> jax.Array:
+    """Element-wise MUX for binary hypervectors.
+
+    Returns when_true where cond is True, when_false otherwise.
+
+    Args:
+        cond: Binary mask of shape (..., d)
+        when_true: Binary hypervector returned where cond is True
+        when_false: Binary hypervector returned where cond is False
+    """
+    return jnp.where(cond, when_true, when_false)
+
+
+@jax.jit
+def select_map(cond: jax.Array, when_pos: jax.Array, when_neg: jax.Array) -> jax.Array:
+    """Element-wise MUX for real-valued hypervectors.
+
+    Selects when_pos where cond > 0, when_neg otherwise.
+
+    Args:
+        cond: Real-valued mask of shape (..., d)
+        when_pos: Hypervector returned where cond > 0
+        when_neg: Hypervector returned where cond <= 0
+    """
+    return jnp.where(cond > 0, when_pos, when_neg)
+
+
+def threshold(vectors: jax.Array, t: int) -> jax.Array:
+    """Generalised majority: bit is 1 when at least *t* of the input vectors have a 1.
+
+    Equivalent to standard majority when ``t = n // 2 + 1`` (for odd n).
+
+    Args:
+        vectors: Binary hypervectors of shape (n, d)
+        t: Minimum count for a bit to be set
+
+    Returns:
+        Binary hypervector of shape (d,)
+    """
+    counts = jnp.sum(vectors.astype(jnp.int32), axis=0)
+    return counts >= t
+
+
+def window(vectors: jax.Array, lo: int, hi: int) -> jax.Array:
+    """Window vote: bit is 1 when the count of 1s is in [lo, hi].
+
+    Useful for agreement / disagreement filters.
+
+    Args:
+        vectors: Binary hypervectors of shape (n, d)
+        lo: Minimum count (inclusive)
+        hi: Maximum count (inclusive)
+
+    Returns:
+        Binary hypervector of shape (d,)
+    """
+    counts = jnp.sum(vectors.astype(jnp.int32), axis=0)
+    return (counts >= lo) & (counts <= hi)
+
+
+# ---------------------------------------------------------------------------
+# Noise injection
+# ---------------------------------------------------------------------------
+
+
+def flip_fraction(key: jax.Array, x: jax.Array, fraction: float = 0.1) -> jax.Array:
+    """Randomly flip a fraction of bits in a binary hypervector.
+
+    Useful for generating noisy variants at a controlled Hamming distance.
+
+    Args:
+        key: JAX PRNG key
+        x: Binary hypervector of shape (..., d)
+        fraction: Fraction of bits to flip, in [0, 1]
+
+    Returns:
+        Noisy binary hypervector
+    """
+    mask = jax.random.bernoulli(key, fraction, shape=x.shape)
+    return jnp.logical_xor(x, mask)
+
+
+def add_noise_map(key: jax.Array, x: jax.Array, noise_level: float = 0.1) -> jax.Array:
+    """Add Gaussian noise to a real-valued hypervector and re-normalise.
+
+    Args:
+        key: JAX PRNG key
+        x: Real-valued hypervector of shape (..., d)
+        noise_level: Standard deviation of the noise
+
+    Returns:
+        Noisy normalised hypervector
+    """
+    noisy = x + noise_level * jax.random.normal(key, shape=x.shape)
+    norm = jnp.linalg.norm(noisy, axis=-1, keepdims=True)
+    return noisy / (norm + EPS)
+
+
+# ---------------------------------------------------------------------------
+# Quantisation
+# ---------------------------------------------------------------------------
+
+
+@jax.jit
+def fractional_power(x: jax.Array, p: float) -> jax.Array:
+    """Raise a MAP hypervector to a fractional power.
+
+    Computes sign(x) * |x|^p element-wise.  This smoothly interpolates
+    between the zero vector (p -> 0) and x itself (p = 1), and can
+    extrapolate beyond (p > 1).  Widely used for encoding continuous
+    attributes: bind(role, fractional_power(filler, value)) produces
+    representations that vary smoothly with *value*.
+
+    Args:
+        x: Real-valued hypervector of shape (..., d)
+        p: Exponent (typically in [0, 2])
+
+    Returns:
+        Hypervector of shape (..., d)
+    """
+    return jnp.sign(x) * jnp.abs(x) ** p
+
+
+@jax.jit
+def soft_quantize(x: jax.Array) -> jax.Array:
+    """Apply tanh for soft bipolar quantisation."""
+    return jnp.tanh(x)
+
+
+@jax.jit
+def hard_quantize(x: jax.Array) -> jax.Array:
+    """Snap each element to +1 or -1 (sign function, 0 maps to -1)."""
+    return jnp.where(x > 0, 1.0, -1.0)
+
+
 __all__ = [
     # BSC operations
     "bind_bsc",
@@ -704,6 +895,21 @@ __all__ = [
     "bind_sequence",
     "graph_encode",
     "resonator",
+    # Additional similarity metrics
+    "jaccard_similarity",
+    "tversky_similarity",
+    # Selection and threshold
+    "select_bsc",
+    "select_map",
+    "threshold",
+    "window",
+    # Noise injection
+    "flip_fraction",
+    "add_noise_map",
+    # Power and quantisation
+    "fractional_power",
+    "soft_quantize",
+    "hard_quantize",
     # Batch operations
     "batch_bind_bsc",
     "batch_bind_map",

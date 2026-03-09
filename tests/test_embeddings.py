@@ -457,3 +457,27 @@ class TestGraphEncoder:
             num_nodes=5, dimensions=100, vsa_model=vsa, key=jax.random.PRNGKey(42)
         )
         assert encoder.vsa_model_name == "map"
+
+
+class TestEncoderDefaultKey:
+    """Cover key=None default branches in each encoder."""
+
+    def test_random_encoder_default_key(self):
+        enc = RandomEncoder.create(num_features=5, num_values=3, dimensions=100)
+        assert enc.codebook.shape == (5, 3, 100)
+
+    def test_level_encoder_default_key(self):
+        enc = LevelEncoder.create(num_levels=5, dimensions=100)
+        assert enc.level_hvs.shape == (5, 100)
+
+    def test_projection_encoder_default_key(self):
+        enc = ProjectionEncoder.create(input_dim=10, dimensions=100)
+        assert enc.projection_matrix.shape == (10, 100)
+
+    def test_kernel_encoder_default_key(self):
+        enc = KernelEncoder.create(input_dim=10, dimensions=100)
+        assert enc.omega.shape == (10, 100)
+
+    def test_graph_encoder_default_key(self):
+        enc = GraphEncoder.create(num_nodes=5, dimensions=100)
+        assert enc.node_embeddings.shape == (5, 100)

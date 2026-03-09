@@ -444,9 +444,111 @@ class RegularizedLSClassifier:
         return dataclass_replace(self, **updates)
 
 
+@register_dataclass
+@dataclass
+class ClusteringModel:
+    """HDC-style k-means clustering.
+
+    Encodes data into hypervectors, then iteratively assigns clusters
+    by cosine similarity and updates centroids by bundling.
+
+    Inspired by the ClusteringModel in hdlib (Cumbo et al., 2023).
+    """
+
+    centroids: jax.Array
+    dimensions: int = field(metadata=dict(static=True))
+    num_clusters: int = field(metadata=dict(static=True))
+    vsa_model_name: str = field(metadata=dict(static=True), default="map")
+
+    @staticmethod
+    def create(
+        num_clusters: int,
+        dimensions: int = 10000,
+        vsa_model: Union[str, "VSAModel"] = "map",
+        key: Optional[jax.Array] = None,
+    ) -> "ClusteringModel":
+        if key is None:
+            key = jax.random.PRNGKey(0)
+
+        if isinstance(vsa_model, str):
+            vsa_model_name = vsa_model
+        else:
+            vsa_model_name = vsa_model.name
+
+        centroids = jax.random.normal(key, (num_clusters, dimensions))
+        norms = jnp.linalg.norm(centroids, axis=-1, keepdims=True)
+        centroids = centroids / (norms + EPS)
+
+        return ClusteringModel(
+            centroids=centroids,
+            dimensions=dimensions,
+            num_clusters=num_clusters,
+            vsa_model_name=vsa_model_name,
+        )
+
+    def fit(
+        self,
+        hvs: jax.Array,
+        max_iters: int = 50,
+    ) -> "ClusteringModel":
+        """Fit clusters by iterating assignment and centroid update.
+
+        Args:
+            hvs: Hypervectors of shape (n, d)
+            max_iters: Maximum iterations (default: 50)
+
+        Returns:
+            Updated ClusteringModel with refined centroids
+        """
+        centroids = self.centroids
+
+        for _ in range(max_iters):
+            sims = hvs @ centroids.T
+            assignments = jnp.argmax(sims, axis=-1)
+
+            new_centroids = []
+            for k in range(self.num_clusters):
+                mask = assignments == k
+                count = jnp.sum(mask)
+                cluster_sum = jnp.sum(hvs * mask[:, None], axis=0)
+                fallback = centroids[k]
+                centroid = jnp.where(count > 0, cluster_sum / (count + EPS), fallback)
+                norm = jnp.linalg.norm(centroid) + EPS
+                new_centroids.append(centroid / norm)
+
+            new_centroids = jnp.stack(new_centroids)
+
+            if jnp.allclose(new_centroids, centroids, atol=1e-6):
+                break
+            centroids = new_centroids
+
+        return dataclass_replace(self, centroids=centroids)
+
+    @jax.jit
+    def predict(self, hvs: jax.Array) -> jax.Array:
+        """Assign each hypervector to the closest centroid.
+
+        Args:
+            hvs: Hypervectors of shape (n, d) or (d,)
+
+        Returns:
+            Cluster assignments (scalar for single query, array for batch)
+        """
+        single = hvs.ndim == 1
+        if single:
+            hvs = hvs[None, :]
+        sims = hvs @ self.centroids.T
+        result = jnp.argmax(sims, axis=-1)
+        return result[0] if single else result
+
+    def replace(self, **updates: Any) -> "ClusteringModel":
+        return dataclass_replace(self, **updates)
+
+
 __all__ = [
     "CentroidClassifier",
     "AdaptiveHDC",
     "LVQClassifier",
     "RegularizedLSClassifier",
+    "ClusteringModel",
 ]

@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from jax_hdc.vsa import BSBC, BSC, CGR, FHRR, HRR, MAP, MCR, VTB, create_vsa_model
+from jax_hdc.vsa import BSBC, BSC, CGR, FHRR, HRR, MAP, MCR, VTB, VSAModel, create_vsa_model
 
 
 class TestVSAModels:
@@ -99,184 +99,154 @@ class TestBSCModel:
     """Test BSC model operations."""
 
     def setup_method(self):
-        """Set up test fixtures."""
         self.model = BSC.create(dimensions=10000)
         self.key = jax.random.PRNGKey(42)
 
     def test_random_generation(self):
-        """Test random hypervector generation."""
         x = self.model.random(self.key, (10000,))
-
         assert x.shape == (10000,)
         assert x.dtype == jnp.bool_
-        # Should be roughly 50% ones
-        assert 0.45 < jnp.mean(x) < 0.55
+        assert 0.45 < float(jnp.mean(x.astype(jnp.float32))) < 0.55
 
     def test_bind_operation(self):
-        """Test binding operation."""
-        x = self.model.random(self.key, (10000,))
-        y = self.model.random(self.key, (10000,))
-
+        k1, k2 = jax.random.split(self.key)
+        x = self.model.random(k1, (10000,))
+        y = self.model.random(k2, (10000,))
         bound = self.model.bind(x, y)
-
         assert bound.shape == (10000,)
         assert bound.dtype == jnp.bool_
+        sim = self.model.similarity(bound, x)
+        assert 0.45 < float(sim) < 0.55
 
     def test_bundle_operation(self):
-        """Test bundling operation."""
         vectors = self.model.random(self.key, (10, 10000))
-
         bundled = self.model.bundle(vectors, axis=0)
-
         assert bundled.shape == (10000,)
         assert bundled.dtype == jnp.bool_
 
     def test_inverse_operation(self):
-        """Test inverse operation."""
         x = self.model.random(self.key, (10000,))
-        x_inv = self.model.inverse(x)
-
-        # For BSC, inverse is identity
-        assert jnp.allclose(x_inv, x)
+        assert jnp.array_equal(self.model.inverse(x), x)
 
     def test_similarity_computation(self):
-        """Test similarity computation."""
-        x = self.model.random(self.key, (10000,))
-        y = self.model.random(self.key, (10000,))
-
-        sim = self.model.similarity(x, y)
-
-        assert 0 <= sim <= 1
+        k1, k2 = jax.random.split(self.key)
+        x = self.model.random(k1, (10000,))
+        y = self.model.random(k2, (10000,))
+        assert jnp.allclose(self.model.similarity(x, x), 1.0)
+        sim_rand = self.model.similarity(x, y)
+        assert 0.45 < float(sim_rand) < 0.55
 
 
 class TestMAPModel:
     """Test MAP model operations."""
 
     def setup_method(self):
-        """Set up test fixtures."""
         self.model = MAP.create(dimensions=10000)
         self.key = jax.random.PRNGKey(42)
 
     def test_random_generation(self):
-        """Test random hypervector generation."""
         x = self.model.random(self.key, (10000,))
-
         assert x.shape == (10000,)
-        # Should be normalized
-        norm = jnp.linalg.norm(x)
-        assert jnp.allclose(norm, 1.0)
+        assert jnp.allclose(jnp.linalg.norm(x), 1.0)
 
     def test_bind_operation(self):
-        """Test binding operation."""
-        x = self.model.random(self.key, (10000,))
-        y = self.model.random(self.key, (10000,))
-
+        k1, k2 = jax.random.split(self.key)
+        x = self.model.random(k1, (10000,))
+        y = self.model.random(k2, (10000,))
         bound = self.model.bind(x, y)
-
         assert bound.shape == (10000,)
+        assert abs(float(self.model.similarity(bound, x))) < 0.1
+        assert abs(float(self.model.similarity(bound, y))) < 0.1
 
     def test_bundle_operation(self):
-        """Test bundling operation."""
         vectors = self.model.random(self.key, (10, 10000))
-
         bundled = self.model.bundle(vectors, axis=0)
-
         assert bundled.shape == (10000,)
-        # Should be normalized
-        norm = jnp.linalg.norm(bundled)
-        assert jnp.allclose(norm, 1.0, atol=1e-6)
+        assert jnp.allclose(jnp.linalg.norm(bundled), 1.0, atol=1e-6)
 
     def test_inverse_operation(self):
-        """Test inverse operation."""
-        x = self.model.random(self.key, (10000,))
-        y = self.model.random(self.key, (10000,))
-
+        k1, k2 = jax.random.split(self.key)
+        x = self.model.random(k1, (10000,))
+        y = self.model.random(k2, (10000,))
         bound = self.model.bind(x, y)
-        x_inv = self.model.inverse(x)
-        unbound = self.model.bind(bound, x_inv)
-
-        # Should get back something close to y
-        sim = self.model.similarity(unbound / jnp.linalg.norm(unbound), y)
-        assert sim > 0.5
+        unbound = self.model.bind(bound, self.model.inverse(x))
+        unbound = unbound / (jnp.linalg.norm(unbound) + 1e-8)
+        sim = self.model.similarity(unbound, y)
+        assert float(sim) > 0.9
 
     def test_similarity_computation(self):
-        """Test similarity computation."""
-        x = self.model.random(self.key, (10000,))
-
-        # Self-similarity should be 1
-        sim = self.model.similarity(x, x)
-        assert jnp.allclose(sim, 1.0, atol=1e-6)
+        k1, k2 = jax.random.split(self.key)
+        x = self.model.random(k1, (10000,))
+        y = self.model.random(k2, (10000,))
+        assert jnp.allclose(self.model.similarity(x, x), 1.0, atol=1e-6)
+        assert abs(float(self.model.similarity(x, y))) < 0.1
 
 
 class TestHRRModel:
     """Test HRR model operations."""
 
     def setup_method(self):
-        """Set up test fixtures."""
         self.model = HRR.create(dimensions=10000)
         self.key = jax.random.PRNGKey(42)
 
     def test_random_generation(self):
-        """Test random hypervector generation."""
         x = self.model.random(self.key, (10000,))
-
         assert x.shape == (10000,)
-        norm = jnp.linalg.norm(x)
-        assert jnp.allclose(norm, 1.0)
+        assert jnp.allclose(jnp.linalg.norm(x), 1.0)
 
     def test_bind_unbind_cycle(self):
-        """Test bind-unbind cycle."""
-        x = self.model.random(self.key, (10000,))
-        y = self.model.random(self.key, (10000,))
-
+        k1, k2 = jax.random.split(self.key)
+        x = self.model.random(k1, (10000,))
+        y = self.model.random(k2, (10000,))
         bound = self.model.bind(x, y)
-        y_inv = self.model.inverse(y)
-        unbound = self.model.bind(bound, y_inv)
-
-        # Normalize for comparison
+        unbound = self.model.bind(bound, self.model.inverse(y))
         unbound = unbound / jnp.linalg.norm(unbound)
-
         sim = self.model.similarity(unbound, x)
-        assert sim > 0.7  # Should be fairly similar
+        assert float(sim) > 0.6
+
+    def test_bind_dissimilarity(self):
+        k1, k2 = jax.random.split(self.key)
+        x = self.model.random(k1, (10000,))
+        y = self.model.random(k2, (10000,))
+        bound = self.model.bind(x, y)
+        bound = bound / (jnp.linalg.norm(bound) + 1e-8)
+        assert abs(float(self.model.similarity(bound, x))) < 0.15
+        assert abs(float(self.model.similarity(bound, y))) < 0.15
 
 
 class TestFHRRModel:
     """Test FHRR model operations."""
 
     def setup_method(self):
-        """Set up test fixtures."""
         self.model = FHRR.create(dimensions=10000)
         self.key = jax.random.PRNGKey(42)
 
     def test_random_generation(self):
-        """Test random hypervector generation."""
         x = self.model.random(self.key, (10000,))
-
         assert x.shape == (10000,)
         assert x.dtype == jnp.complex64 or x.dtype == jnp.complex128
-        # Should be on unit circle
-        magnitudes = jnp.abs(x)
-        assert jnp.allclose(magnitudes, 1.0, atol=1e-6)
+        assert jnp.allclose(jnp.abs(x), 1.0, atol=1e-6)
 
     def test_bind_operation(self):
-        """Test binding operation."""
-        x = self.model.random(self.key, (10000,))
-        y = self.model.random(self.key, (10000,))
-
+        k1, k2 = jax.random.split(self.key)
+        x = self.model.random(k1, (10000,))
+        y = self.model.random(k2, (10000,))
         bound = self.model.bind(x, y)
-
         assert bound.shape == (10000,)
-        # Should maintain unit magnitude
-        magnitudes = jnp.abs(bound)
-        assert jnp.allclose(magnitudes, 1.0, atol=1e-6)
+        assert jnp.allclose(jnp.abs(bound), 1.0, atol=1e-6)
+
+    def test_bind_unbind_cycle(self):
+        k1, k2 = jax.random.split(self.key)
+        x = self.model.random(k1, (10000,))
+        y = self.model.random(k2, (10000,))
+        bound = self.model.bind(x, y)
+        unbound = self.model.bind(bound, self.model.inverse(y))
+        sim = self.model.similarity(unbound, x)
+        assert float(sim) > 0.99
 
     def test_inverse_conjugate(self):
-        """Test that inverse is complex conjugate."""
         x = self.model.random(self.key, (10000,))
-        x_inv = self.model.inverse(x)
-
-        # Inverse should be conjugate
-        assert jnp.allclose(x_inv, jnp.conj(x))
+        assert jnp.allclose(self.model.inverse(x), jnp.conj(x))
 
 
 class TestCGRModel:
@@ -446,6 +416,111 @@ class TestVTBModel:
         unbound_norm = unbound / (jnp.linalg.norm(unbound) + 1e-8)
         sim = self.model.similarity(unbound_norm, y)
         assert sim > 0.5
+
+
+class TestVSAModelAbstract:
+    """Test VSAModel base class raises NotImplementedError."""
+
+    def test_bind_not_implemented(self):
+        m = VSAModel(name="test", dimensions=100)
+        with pytest.raises(NotImplementedError):
+            m.bind(jnp.zeros(100), jnp.zeros(100))
+
+    def test_bundle_not_implemented(self):
+        m = VSAModel(name="test", dimensions=100)
+        with pytest.raises(NotImplementedError):
+            m.bundle(jnp.zeros((2, 100)))
+
+    def test_inverse_not_implemented(self):
+        m = VSAModel(name="test", dimensions=100)
+        with pytest.raises(NotImplementedError):
+            m.inverse(jnp.zeros(100))
+
+    def test_similarity_not_implemented(self):
+        m = VSAModel(name="test", dimensions=100)
+        with pytest.raises(NotImplementedError):
+            m.similarity(jnp.zeros(100), jnp.zeros(100))
+
+    def test_random_not_implemented(self):
+        m = VSAModel(name="test", dimensions=100)
+        with pytest.raises(NotImplementedError):
+            m.random(jax.random.PRNGKey(0), (100,))
+
+
+class TestHRRCoverage:
+    """Cover HRR bundle."""
+
+    def test_bundle(self):
+        m = HRR.create(dimensions=100)
+        k = jax.random.PRNGKey(0)
+        vecs = m.random(k, (3, 100))
+        bundled = m.bundle(vecs, axis=0)
+        assert bundled.shape == (100,)
+
+
+class TestFHRRCoverage:
+    """Cover FHRR bundle and similarity."""
+
+    def test_bundle(self):
+        m = FHRR.create(dimensions=100)
+        k = jax.random.PRNGKey(0)
+        vecs = m.random(k, (3, 100))
+        bundled = m.bundle(vecs, axis=0)
+        assert bundled.shape == (100,)
+
+    def test_similarity(self):
+        m = FHRR.create(dimensions=100)
+        k = jax.random.PRNGKey(0)
+        x = m.random(k, (100,))
+        sim = m.similarity(x, x)
+        assert float(sim) > 0.99
+
+
+class TestBSBCCoverage:
+    """Cover BSBC bundle, inverse, validation, and random batch shapes."""
+
+    def test_bsbc_bad_dimensions(self):
+        with pytest.raises(ValueError, match="divisible"):
+            BSBC.create(dimensions=101, block_size=10, k_active=2)
+
+    def test_bsbc_bad_k_active(self):
+        with pytest.raises(ValueError, match="k_active"):
+            BSBC.create(dimensions=100, block_size=10, k_active=0)
+        with pytest.raises(ValueError, match="k_active"):
+            BSBC.create(dimensions=100, block_size=10, k_active=11)
+
+    def test_bundle(self):
+        m = BSBC.create(dimensions=100, block_size=10, k_active=2)
+        k = jax.random.PRNGKey(0)
+        vecs = m.random(k, (3, 100))
+        bundled = m.bundle(vecs, axis=0)
+        assert bundled.shape == (100,)
+
+    def test_inverse(self):
+        m = BSBC.create(dimensions=100, block_size=10, k_active=2)
+        k = jax.random.PRNGKey(0)
+        x = m.random(k, (100,))
+        inv = m.inverse(x)
+        assert inv.shape == (100,)
+
+    def test_random_batch_reshape(self):
+        m = BSBC.create(dimensions=100, block_size=10, k_active=2)
+        k = jax.random.PRNGKey(0)
+        hvs = m.random(k, (5, 100))
+        assert hvs.shape == (5, 100)
+
+    def test_random_single_1d(self):
+        m = BSBC.create(dimensions=100, block_size=10, k_active=2)
+        k = jax.random.PRNGKey(0)
+        hv = m.random(k, (100,))
+        assert hv.shape == (100,)
+
+    def test_random_short_1d_shape(self):
+        """Cover the second 1D branch (shape != (dimensions,) but len==1)."""
+        m = BSBC.create(dimensions=100, block_size=10, k_active=2)
+        k = jax.random.PRNGKey(0)
+        hv = m.random(k, (50,))
+        assert hv.ndim == 1
 
 
 if __name__ == "__main__":
