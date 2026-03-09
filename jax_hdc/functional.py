@@ -5,6 +5,7 @@ This module provides the fundamental operations for manipulating hypervectors:
 - Bundling: Aggregates multiple hypervectors into a similar result
 - Permutation: Reorders elements to encode sequences
 - Similarity: Measures relatedness between hypervectors
+- Composite: Multi-vector bind/bundle, n-grams, sequences, hash tables
 """
 
 import functools
@@ -389,17 +390,288 @@ def inverse_vtb(x: jax.Array) -> jax.Array:
 bundle_vtb = bundle_map
 
 
+# ---------------------------------------------------------------------------
+# Similarity: dot product
+# ---------------------------------------------------------------------------
+
+
+@jax.jit
+def dot_similarity(x: jax.Array, y: jax.Array) -> jax.Array:
+    """Compute dot product similarity between hypervectors.
+
+    Args:
+        x: Hypervector of shape (..., d)
+        y: Hypervector of shape (..., d)
+
+    Returns:
+        Dot product (scalar or batch)
+    """
+    return jnp.sum(x * y, axis=-1)
+
+
+# ---------------------------------------------------------------------------
+# Negation (bundling inverse)
+# ---------------------------------------------------------------------------
+
+
+@jax.jit
+def negative_bsc(x: jax.Array) -> jax.Array:
+    """Bundling inverse for BSC (bit flip)."""
+    return jnp.logical_not(x)
+
+
+@jax.jit
+def negative_map(x: jax.Array) -> jax.Array:
+    """Bundling inverse for MAP (element-wise negation)."""
+    return -x
+
+
+# ---------------------------------------------------------------------------
+# Multi-vector operations
+# ---------------------------------------------------------------------------
+
+
+def multibind_map(vectors: jax.Array, axis: int = 0) -> jax.Array:
+    """Bind all vectors along an axis via element-wise product (MAP/HRR).
+
+    Generalises :func:`bind_map` to *n* vectors.
+
+    Args:
+        vectors: Array with shape (n, ..., d)
+        axis: Axis along which to reduce (default: 0)
+
+    Returns:
+        Single hypervector equal to vectors[0] * vectors[1] * ...
+    """
+    return jnp.prod(vectors, axis=axis)
+
+
+def multibind_bsc(vectors: jax.Array, axis: int = 0) -> jax.Array:
+    """Bind all vectors along an axis via cumulative XOR (BSC).
+
+    Args:
+        vectors: Boolean array with shape (n, ..., d)
+        axis: Axis along which to reduce (default: 0)
+
+    Returns:
+        XOR-reduction of all vectors along axis
+    """
+    n = vectors.shape[axis]
+    result = jnp.take(vectors, 0, axis=axis)
+    for i in range(1, n):
+        result = jnp.logical_xor(result, jnp.take(vectors, i, axis=axis))
+    return result
+
+
+def cross_product(set_a: jax.Array, set_b: jax.Array, bind_fn: Callable = bind_map) -> jax.Array:
+    """Compute the cross product (all pairwise bindings) of two sets.
+
+    Returns an array of shape (n, m, d) where element [i, j] is
+    bind(set_a[i], set_b[j]).
+
+    Args:
+        set_a: First set of shape (n, d)
+        set_b: Second set of shape (m, d)
+        bind_fn: Binding function (default: bind_map)
+    """
+    return jax.vmap(lambda a: jax.vmap(lambda b: bind_fn(a, b))(set_b))(set_a)
+
+
+# ---------------------------------------------------------------------------
+# Composite encodings
+# ---------------------------------------------------------------------------
+
+
+def hash_table(
+    keys: jax.Array,
+    values: jax.Array,
+    bind_fn: Callable = bind_map,
+) -> jax.Array:
+    """Create a hash-table hypervector by bundling bound (key, value) pairs.
+
+    hash_table = Σ bind(k_i, v_i)
+
+    Args:
+        keys: Key hypervectors of shape (n, d)
+        values: Value hypervectors of shape (n, d)
+        bind_fn: Binding function (default: bind_map)
+
+    Returns:
+        Hash-table hypervector of shape (d,)
+    """
+    pairs = jax.vmap(bind_fn)(keys, values)
+    return jnp.sum(pairs, axis=0)
+
+
+def ngrams(
+    vectors: jax.Array,
+    n: int = 3,
+    bind_fn: Callable = bind_map,
+) -> jax.Array:
+    """Compute the n-gram representation of a sequence of hypervectors.
+
+    Each n-gram is the binding of n positionally-permuted consecutive vectors,
+    then all n-grams are bundled (summed).
+
+    Args:
+        vectors: Sequence of shape (m, d)
+        n: Size of each n-gram (default: 3)
+        bind_fn: Binding function (default: bind_map)
+
+    Returns:
+        N-gram hypervector of shape (d,)
+    """
+    m = vectors.shape[0]
+    if m < n:
+        raise ValueError(f"Need at least {n} vectors for {n}-grams, got {m}")
+
+    result = jnp.zeros(vectors.shape[-1])
+    for start in range(m - n + 1):
+        gram = permute(vectors[start], shifts=n - 1)
+        for offset in range(1, n):
+            gram = bind_fn(gram, permute(vectors[start + offset], shifts=n - 1 - offset))
+        result = result + gram
+    return result
+
+
+def bundle_sequence(vectors: jax.Array) -> jax.Array:
+    """Encode a sequence by bundling position-permuted vectors.
+
+    sequence = Σ permute(v_i, shifts=m-1-i)
+
+    Preserves order information through positional permutation.
+
+    Args:
+        vectors: Sequence of shape (m, d)
+
+    Returns:
+        Sequence hypervector of shape (d,)
+    """
+    m = vectors.shape[0]
+    result = jnp.zeros(vectors.shape[-1])
+    for i in range(m):
+        result = result + permute(vectors[i], shifts=m - 1 - i)
+    return result
+
+
+def bind_sequence(
+    vectors: jax.Array,
+    bind_fn: Callable = bind_map,
+) -> jax.Array:
+    """Encode a sequence by binding position-permuted vectors.
+
+    sequence = Π permute(v_i, shifts=m-1-i)
+
+    Binding-based sequences are more noise-resistant than bundle-based
+    for short sequences, at the cost of lossy retrieval.
+
+    Args:
+        vectors: Sequence of shape (m, d)
+        bind_fn: Binding function (default: bind_map)
+
+    Returns:
+        Sequence hypervector of shape (d,)
+    """
+    m = vectors.shape[0]
+    result = permute(vectors[0], shifts=m - 1)
+    for i in range(1, m):
+        result = bind_fn(result, permute(vectors[i], shifts=m - 1 - i))
+    return result
+
+
+def graph_encode(
+    edges: jax.Array,
+    node_hvs: jax.Array,
+    *,
+    directed: bool = False,
+    bind_fn: Callable = bind_map,
+) -> jax.Array:
+    """Encode a graph as a single hypervector.
+
+    Each edge (u, v) is encoded as bind(node_hvs[u], permute(node_hvs[v]))
+    for directed graphs, or bind(node_hvs[u], node_hvs[v]) for undirected.
+    All edge encodings are bundled.
+
+    Args:
+        edges: Edge list of shape (num_edges, 2) with node indices
+        node_hvs: Node hypervectors of shape (num_nodes, d)
+        directed: Whether edges are directed (default: False)
+        bind_fn: Binding function (default: bind_map)
+
+    Returns:
+        Graph hypervector of shape (d,)
+    """
+
+    def encode_edge(edge):
+        u_hv = node_hvs[edge[0]]
+        v_hv = node_hvs[edge[1]]
+        if directed:
+            return bind_fn(u_hv, permute(v_hv))
+        return bind_fn(u_hv, v_hv)
+
+    edge_hvs = jax.vmap(encode_edge)(edges)
+    return jnp.sum(edge_hvs, axis=0)
+
+
+def resonator(
+    codebooks: list[jax.Array],
+    target: jax.Array,
+    *,
+    max_iters: int = 100,
+    bind_fn: Callable = bind_map,
+) -> list[jax.Array]:
+    """Resonator network for factorising a composite hypervector.
+
+    Given codebooks C_1 ... C_k and a target = bind(f_1, ..., f_k),
+    iteratively estimates each factor f_i.  Uses early stopping when
+    estimates converge.
+
+    Args:
+        codebooks: List of k codebooks, each of shape (n_i, d)
+        target: Target hypervector of shape (d,)
+        max_iters: Maximum iterations (default: 100)
+        bind_fn: Binding function (default: bind_map)
+
+    Returns:
+        List of k estimated factor hypervectors
+    """
+    k = len(codebooks)
+    estimates = [codebooks[i][0] for i in range(k)]
+
+    for _ in range(max_iters):
+        new_estimates = []
+        for i in range(k):
+            other = target
+            for j in range(k):
+                if j != i:
+                    inv = inverse_map(estimates[j])
+                    other = bind_fn(other, inv)
+            sims = jax.vmap(lambda c: cosine_similarity(other, c))(codebooks[i])
+            best = codebooks[i][jnp.argmax(sims)]
+            new_estimates.append(best)
+
+        converged = all(bool(jnp.allclose(new_estimates[i], estimates[i])) for i in range(k))
+        estimates = new_estimates
+        if converged:
+            break
+
+    return estimates
+
+
 __all__ = [
     # BSC operations
     "bind_bsc",
     "bundle_bsc",
     "inverse_bsc",
+    "negative_bsc",
     "hamming_similarity",
     # MAP operations
     "bind_map",
     "bundle_map",
     "inverse_map",
+    "negative_map",
     "cosine_similarity",
+    "dot_similarity",
     # HRR operations
     "bind_hrr",
     "bundle_hrr",
@@ -421,6 +693,17 @@ __all__ = [
     # Universal operations
     "permute",
     "cleanup",
+    # Multi-vector operations
+    "multibind_map",
+    "multibind_bsc",
+    "cross_product",
+    # Composite encodings
+    "hash_table",
+    "ngrams",
+    "bundle_sequence",
+    "bind_sequence",
+    "graph_encode",
+    "resonator",
     # Batch operations
     "batch_bind_bsc",
     "batch_bind_map",
