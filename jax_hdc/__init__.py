@@ -1,6 +1,6 @@
 """JAX-HDC: Hyperdimensional Computing with JAX."""
 
-__version__ = "0.1.0-alpha"
+__version__ = "0.1.0a0"
 
 from jax_hdc import embeddings, functional, memory, metrics, models, structures, utils, vsa
 from jax_hdc.embeddings import (
