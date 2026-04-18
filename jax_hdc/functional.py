@@ -601,7 +601,7 @@ def graph_encode(
         Graph hypervector of shape (d,)
     """
 
-    def encode_edge(edge):
+    def encode_edge(edge: jax.Array) -> jax.Array:
         u_hv = node_hvs[edge[0]]
         v_hv = node_hvs[edge[1]]
         if directed:

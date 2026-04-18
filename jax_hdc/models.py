@@ -516,11 +516,11 @@ class ClusteringModel:
                 norm = jnp.linalg.norm(centroid) + EPS
                 new_centroids.append(centroid / norm)
 
-            new_centroids = jnp.stack(new_centroids)
+            stacked_centroids: jax.Array = jnp.stack(new_centroids)
 
-            if jnp.allclose(new_centroids, centroids, atol=1e-6):
+            if jnp.allclose(stacked_centroids, centroids, atol=1e-6):
                 break
-            centroids = new_centroids
+            centroids = stacked_centroids
 
         return dataclass_replace(self, centroids=centroids)
 
